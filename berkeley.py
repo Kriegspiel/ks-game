@@ -4,7 +4,7 @@ import chess
 
 
 ILLEGAL_MOVE = 'illegal'
-REGULAR_MOVE_DONE = 'regular move done'
+REGULAR_MOVE = 'regular move done'
 CAPUTRE_DONE = 'capture'
 
 HAS_ANY = 'has any'
@@ -37,7 +37,7 @@ class BerkeleyGame(object):
                     # Cpature done
                     return CAPUTRE_DONE, captured_square, special_case
                 # Regular move done
-                return REGULAR_MOVE_DONE, None, special_case
+                return REGULAR_MOVE, None, special_case
             # No move done
             return ILLEGAL_MOVE, None, None
         elif isinstance(move, str):
