@@ -1,22 +1,34 @@
 # -*- coding: utf-8 -*-
 
+import enum
+
 import chess
 
 
+@enum.unique
+class MoveAnnouncement(enum.Enum):
+    '''docstring for MoveAnnouncement'''
+    ILLEGAL_MOVE = 1  #enum.auto()
+    REGULAR_MOVE = 2  #enum.auto()
+    CAPUTRE_DONE = 3  #enum.auto()
 
-ILLEGAL_MOVE = 'illegal'
-REGULAR_MOVE = 'regular move done'
-CAPUTRE_DONE = 'capture'
 
-HAS_ANY = 'has any'
-NO_ANY = 'no any'
-ASK_ANY = 'any?'
+@enum.unique
+class AnyRuleAnnouncement(enum.Enum):
+    '''docstring for AnyRuleAnnouncement'''
+    HAS_ANY = 1  #enum.auto()
+    NO_ANY = 2  #enum.auto()
+    ASK_ANY = 3  #enum.auto()
 
-CHECKMATE = 'checkmate'
-STALEMATE = 'stalemate'
-FIVEFOLD_REPETITION = 'fivefold repetition'
-SEVENTYFIVE_MOVES = 'seventyfive moves'
-CHECK = 'check'
+
+@enum.unique
+class SpecialCaseAnnouncement(enum.Enum):
+    '''docstring for SpecialCaseAnnouncement'''
+    CHECKMATE = 1  #enum.auto()
+    STALEMATE = 2  #enum.auto()
+    FIVEFOLD_REPETITION = 3  #enum.auto()
+    SEVENTYFIVE_MOVES = 4  #enum.auto()
+    CHECK = 5  #enum.auto()
 
 
 class BerkeleyGame(object):
@@ -28,29 +40,60 @@ class BerkeleyGame(object):
         self._must_use_pawns = False
     
     def ask_for(self, move):
+        '''
+        return (MoveAnnouncement, captured_square, special_case)
+        '''
         if isinstance(move, chess.Move):
-            if self._if_legal_move(move):
+            # Player asks about normal move
+            if self._is_legal_move(move):
+                # Move is legal in normal chess
                 if not self._check_if_must_use_pawns_rule(move):
-                    return ILLEGAL_MOVE, None, None
+                    # Move is illigal, because player have asked
+                    # about any possible pawn captures and there
+                    # are some pawn captures, but now tries to
+                    # play another piece.
+                    return (
+                        MoveAnnouncement.ILLEGAL_MOVE,
+                        None,
+                        None
+                    )
+                # Perform normal move
                 captured_square = self._make_move(move)
                 special_case = self._check_special_cases()
                 if captured_square is not None:
-                    # Cpature done
-                    return CAPUTRE_DONE, captured_square, special_case
-                # Regular move done
-                return REGULAR_MOVE, None, special_case
-            # No move done
-            return ILLEGAL_MOVE, None, None
-        elif isinstance(move, str):
-            # Any rule
-            if move == ASK_ANY:
-                if self._if_any_pawn_captures():
-                    self._must_use_pawns = True
-                    return HAS_ANY, None, None
-                else:
-                    return NO_ANY, None, None
+                    # If it was capture
+                    return (
+                        MoveAnnouncement.CAPUTRE_DONE,
+                        captured_square,
+                        special_case
+                    )
+                # If it was regular move
+                return (
+                    MoveAnnouncement.REGULAR_MOVE,
+                    None,
+                    special_case
+                )
+            # If move is illegal
+            return (
+                MoveAnnouncement.ILLEGAL_MOVE,
+                None,
+                None
+            )
+        elif move == AnyRuleAnnouncement.ASK_ANY:
+            # Any Rule. Asking for any available pawn captures.
+            if self._has_any_pawn_captures():
+                self._must_use_pawns = True
+                return (
+                    AnyRuleAnnouncement.HAS_ANY,
+                    None,
+                    None
+                )
             else:
-                raise KeyError
+                return (
+                    AnyRuleAnnouncement.NO_ANY,
+                    None,
+                    None
+                )
         else:
             raise TypeError
 
@@ -61,37 +104,37 @@ class BerkeleyGame(object):
 
     def _check_special_cases(self):
         if self.board.is_game_over():
-            return CHECKMATE
+            return SpecialCaseAnnouncement.CHECKMATE
         if self.board.is_stalemate():
-            return STALEMATE
+            return SpecialCaseAnnouncement.STALEMATE
         if self.board.is_fivefold_repetition():
-            return FIVEFOLD_REPETITION
+            return SpecialCaseAnnouncement.FIVEFOLD_REPETITION
         if self.board.is_seventyfive_moves():
-            return SEVENTYFIVE_MOVES
+            return SpecialCaseAnnouncement.SEVENTYFIVE_MOVES
         if self.board.is_check():
-            return CHECK
+            return SpecialCaseAnnouncement.CHECK
         return None
 
-    def _make_move(self, move):
-        def get_captured_square(move):
-            if not self.board.is_en_passant(move):
-                return move.to_square
+    def _get_captured_square(self, move):
+        if not self.board.is_en_passant(move):
+            return move.to_square
+        else:
+            if self.board.turn == chess.WHITE:
+                return move.to_square - 8
             else:
-                if self.board.turn == chess.WHITE:
-                    return move.to_square - 8
-                else:
-                    return move.to_square + 8
+                return move.to_square + 8
 
+    def _make_move(self, move):
         self._must_use_pawns = False
         if self.board.is_capture(move):
-            captured_square = get_captured_square(move)
+            captured_square = self._get_captured_square(move)
             self.board.push(move)
             return captured_square
         else:
             self.board.push(move)
             return None
 
-    def _if_any_pawn_captures(self):
+    def _has_any_pawn_captures(self):
         pawn_squares = self.board.pieces(chess.PAWN, self.board.turn)
         for move in self.board.legal_moves:
             if move.from_square in pawn_squares:
@@ -99,5 +142,5 @@ class BerkeleyGame(object):
                     return True
         return False
 
-    def _if_legal_move(self, move):
+    def _is_legal_move(self, move):
         return move in self.board.legal_moves
