@@ -3,6 +3,7 @@
 import chess
 
 
+
 ILLEGAL_MOVE = 'illegal'
 REGULAR_MOVE = 'regular move done'
 CAPUTRE_DONE = 'capture'
