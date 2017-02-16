@@ -85,7 +85,7 @@ def test_white_capture_and_check():
     g.ask_for(ARA.ASK_ANY)
     g.ask_for(chess.Move.from_uci('d5e4'))
     g.ask_for(ARA.ASK_ANY)
-    assert g.ask_for(chess.Move.from_uci('g6f7')) == (MA.CAPUTRE_DONE, chess.F7, SCA.CHECK)
+    assert g.ask_for(chess.Move.from_uci('g6f7')) == (MA.CAPUTRE_DONE, chess.F7, SCA.CHECK_SHORT_DIAGONAL)
 
 
 def test_black_from_check_false():
@@ -158,3 +158,65 @@ def test_black_capture_en_passant():
     g.ask_for(chess.Move.from_uci('f2f4'))
     g.ask_for(ARA.ASK_ANY)
     assert g.ask_for(chess.Move.from_uci('e4f3')) == (MA.CAPUTRE_DONE, chess.F4, None)
+
+
+def test_check_short_diagonal():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.ask_for(chess.Move(chess.B2, chess.A3))
+    assert g.ask_for(chess.Move(chess.D1, chess.C1)) == (MA.REGULAR_MOVE, None, SCA.CHECK_SHORT_DIAGONAL)
+
+
+def test_check_file():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.ask_for(chess.Move(chess.B2, chess.A3))
+    assert g.ask_for(chess.Move(chess.D1, chess.A1)) == (MA.REGULAR_MOVE, None, SCA.CHECK_FILE)
+
+
+def test_check_rank():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.ask_for(chess.Move(chess.B2, chess.A3))
+    assert g.ask_for(chess.Move(chess.D1, chess.D3)) == (MA.REGULAR_MOVE, None, SCA.CHECK_RANK)
+
+
+def test_check_long_diagonal():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.ask_for(chess.Move(chess.B2, chess.A3))
+    assert g.ask_for(chess.Move(chess.D1, chess.D6)) == (MA.REGULAR_MOVE, None, SCA.CHECK_LONG_DIAGONAL)
+
+
+def test_check_knight():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.ask_for(chess.Move(chess.B2, chess.A3))
+    g.board.set_piece_at(chess.C3, chess.Piece(chess.KNIGHT, chess.BLACK))
+    assert g.ask_for(chess.Move(chess.C3, chess.B5)) == (MA.REGULAR_MOVE, None, SCA.CHECK_KNIGHT)
+
+
+def test_check_double():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.E2, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
+    g.ask_for(chess.Move(chess.C2, chess.B2))
+    assert g.ask_for(chess.Move(chess.D2, chess.C4)) == (MA.REGULAR_MOVE, None, SCA.CHECK_DOUBLE)

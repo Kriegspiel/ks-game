@@ -28,7 +28,13 @@ class SpecialCaseAnnouncement(enum.Enum):
     STALEMATE = 2  #enum.auto()
     FIVEFOLD_REPETITION = 3  #enum.auto()
     SEVENTYFIVE_MOVES = 4  #enum.auto()
-    CHECK = 5  #enum.auto()
+    # CHECK = 5  #enum.auto()
+    CHECK_RANK = 6  #enum.auto()
+    CHECK_FILE = 7  #enum.auto()
+    CHECK_LONG_DIAGONAL = 8  #enum.auto()
+    CHECK_SHORT_DIAGONAL = 9  #enum.auto()
+    CHECK_KNIGHT = 10  #enum.auto()
+    CHECK_DOUBLE = 11  #enum.auto()
 
 
 class BerkeleyGame(object):
@@ -103,16 +109,72 @@ class BerkeleyGame(object):
         return True
 
     def _check_special_cases(self):
+        def same_rank(from_sq, to_sq):
+            # Or same row
+            return from_sq // 8 == to_sq // 8
+        def same_file(from_sq, to_sq):
+            # Or same column
+            return from_sq % 8 == to_sq % 8
+        def SW_NE_diagonal(from_sq, to_sq):
+            # Or on one lower-left upper-right diagonal
+            # Parallel to A1H8
+            return ((from_sq // 8) - (to_sq // 8)) == ((from_sq % 8) - (to_sq % 8))
+        def NW_SE_diagonal(from_sq, to_sq):
+            # Or on one upper-left lower-right diagonal
+            # Parallel to A8H1
+            return ((from_sq // 8) - (to_sq // 8)) == -((from_sq % 8) - (to_sq % 8))
+        def is_short_diagonal(from_sq, to_sq):
+            '''
+            return True is diagonal is short
+            '''
+            if (to_sq // 8 <= 3) and (to_sq % 8 <= 3) or (to_sq // 8 > 3) and (to_sq % 8 > 3):
+                # This means that King is in lower-left quadrant or in upper-right quadrant
+                # In this quadrants NW_SE_diagonals are shortest
+                if NW_SE_diagonal(from_sq, to_sq):
+                    return True
+                elif SW_NE_diagonal(from_sq, to_sq):
+                    return False
+                else:
+                    raise KeyError
+            else:
+                # Other two quadrants. And diagonals are vise-versa.
+                if NW_SE_diagonal(from_sq, to_sq):
+                    return False
+                elif SW_NE_diagonal(from_sq, to_sq):
+                    return True
+                else:
+                    raise KeyError
         if self.board.is_game_over():
             return SpecialCaseAnnouncement.CHECKMATE
+        if self.board.is_check():
+            sq = self.board.pieces(chess.KING, self.board.turn)
+            king_square = sq.pop()
+            attackers = self.board.attackers(not self.board.turn, king_square)
+            attackers_squares = list(attackers)
+            if len(attackers_squares) > 1:
+                return SpecialCaseAnnouncement.CHECK_DOUBLE
+            elif len(attackers_squares) == 1:
+                attacker_square = attackers_squares[0]
+                if same_file(attacker_square, king_square):
+                    return SpecialCaseAnnouncement.CHECK_FILE
+                elif same_rank(attacker_square, king_square):
+                    return SpecialCaseAnnouncement.CHECK_RANK
+                elif (SW_NE_diagonal(attacker_square, king_square)
+                            or NW_SE_diagonal(attacker_square, king_square)):
+                    if is_short_diagonal(attacker_square, king_square):
+                        return SpecialCaseAnnouncement.CHECK_SHORT_DIAGONAL
+                    else:
+                        return SpecialCaseAnnouncement.CHECK_LONG_DIAGONAL
+                else:
+                    return SpecialCaseAnnouncement.CHECK_KNIGHT
+            else:
+                raise RuntimeError
         if self.board.is_stalemate():
             return SpecialCaseAnnouncement.STALEMATE
         if self.board.is_fivefold_repetition():
             return SpecialCaseAnnouncement.FIVEFOLD_REPETITION
         if self.board.is_seventyfive_moves():
             return SpecialCaseAnnouncement.SEVENTYFIVE_MOVES
-        if self.board.is_check():
-            return SpecialCaseAnnouncement.CHECK
         return None
 
     def _get_captured_square(self, move):
