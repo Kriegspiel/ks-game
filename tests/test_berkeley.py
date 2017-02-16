@@ -220,3 +220,196 @@ def test_check_double():
     g.board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
     g.ask_for(chess.Move(chess.C2, chess.B2))
     assert g.ask_for(chess.Move(chess.D2, chess.C4)) == (MA.REGULAR_MOVE, None, SCA.CHECK_DOUBLE)
+
+
+def test_promotion_check_long():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    assert g.ask_for(chess.Move(chess.A7, chess.A8, promotion=chess.QUEEN)) == (MA.REGULAR_MOVE, None, SCA.CHECK_LONG_DIAGONAL)
+
+
+def test_impossible_to_promotion_without_piece_spesification():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    assert g.ask_for(chess.Move(chess.A7, chess.A8)) == (MA.ILLEGAL_MOVE, None, None)
+
+
+def test_five_fold_draw():
+    # 1
+    g = BerkeleyGame()
+    # 2
+    g.ask_for(chess.Move(chess.G1, chess.F3))
+    g.ask_for(chess.Move(chess.G8, chess.F6))
+    g.ask_for(chess.Move(chess.F3, chess.G1))
+    g.ask_for(chess.Move(chess.F6, chess.G8))
+    # 3
+    g.ask_for(chess.Move(chess.G1, chess.F3))
+    g.ask_for(chess.Move(chess.G8, chess.F6))
+    g.ask_for(chess.Move(chess.F3, chess.G1))
+    g.ask_for(chess.Move(chess.F6, chess.G8))
+    # 4
+    g.ask_for(chess.Move(chess.G1, chess.F3))
+    g.ask_for(chess.Move(chess.G8, chess.F6))
+    g.ask_for(chess.Move(chess.F3, chess.G1))
+    g.ask_for(chess.Move(chess.F6, chess.G8))
+    # 5
+    g.ask_for(chess.Move(chess.G1, chess.F3))
+    g.ask_for(chess.Move(chess.G8, chess.F6))
+    g.ask_for(chess.Move(chess.F3, chess.G1))
+    assert g.ask_for(chess.Move(chess.F6, chess.G8)) == (MA.REGULAR_MOVE, None, SCA.DRAW_FIVEFOLD)
+
+
+def test_75_moves_draw():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.D4, chess.Piece(chess.PAWN, chess.WHITE))
+
+    white_king_sq = chess.A1
+    for i in range(4):
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.H8, chess.G8))
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.G8, chess.H8))
+    # 14
+    for i in range(4):
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.G8, chess.F8))
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.F8, chess.G8))
+    # 28
+    for i in range(4):
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.F8, chess.E8))
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.E8, chess.F8))
+    for i in range(4):
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.E8, chess.D8))
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.D8, chess.E8))
+    # 56
+    for i in range(4):
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.D8, chess.C8))
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.C8, chess.D8))
+    for i in range(4):
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.C8, chess.B8))
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.B8, chess.C8))
+    # 84
+    g.ask_for(chess.Move(chess.A1, chess.A2))
+    g.ask_for(chess.Move(chess.B8, chess.C8))
+    g.ask_for(chess.Move(chess.A2, chess.A1))
+    g.ask_for(chess.Move(chess.C8, chess.D8))
+    g.ask_for(chess.Move(chess.A1, chess.A2))
+    g.ask_for(chess.Move(chess.D8, chess.E8))
+    g.ask_for(chess.Move(chess.A2, chess.A1))
+    g.ask_for(chess.Move(chess.E8, chess.F8))
+    g.ask_for(chess.Move(chess.A1, chess.B2))
+    g.ask_for(chess.Move(chess.F8, chess.G8))
+    g.ask_for(chess.Move(chess.B2, chess.A2))
+    g.ask_for(chess.Move(chess.G8, chess.H8))
+    # 96
+    white_king_sq = chess.A2
+    for i in range(4):
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.H8, chess.G8))
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.G8, chess.H8))
+    for i in range(4):
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.G8, chess.F8))
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.F8, chess.G8))
+    for i in range(4):
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.F8, chess.E8))
+        g.ask_for(chess.Move(white_king_sq, white_king_sq + 1))
+        white_king_sq += 1
+        g.ask_for(chess.Move(chess.E8, chess.F8))
+    for i in range(2):
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.E8, chess.D8))
+        white_king_sq -= 1
+        g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+        g.ask_for(chess.Move(chess.D8, chess.E8))
+    # 146
+    white_king_sq -= 1
+    g.ask_for(chess.Move(white_king_sq, white_king_sq - 1))
+    g.ask_for(chess.Move(chess.E8, chess.D8))
+    # 148
+    g.ask_for(chess.Move(chess.C2, chess.C3))
+    # 149
+    assert g.ask_for(chess.Move(chess.D8, chess.D7)) == (MA.REGULAR_MOVE, None, SCA.DRAW_SEVENTYFIVE)
+
+
+def test_stalemate():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    assert g.ask_for(chess.Move(chess.A1, chess.A7)) == (MA.REGULAR_MOVE, None, SCA.DRAW_STALEMATE)
+
+
+def test_white_wins():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
+    g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.WHITE))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    assert g.ask_for(chess.Move(chess.A1, chess.A8)) == (MA.REGULAR_MOVE, None, SCA.CHECKMATE_WHITE_WINS)
+
+
+def test_black_wins():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.BLACK))
+    g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.BLACK))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
+    g.board.turn = chess.BLACK
+    assert g.ask_for(chess.Move(chess.A1, chess.A8)) == (MA.REGULAR_MOVE, None, SCA.CHECKMATE_BLACK_WINS)
+
+
+def test_draw_insufficient():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.A8, chess.Piece(chess.QUEEN, chess.WHITE))
+    g.board.set_piece_at(chess.F7, chess.Piece(chess.KING, chess.WHITE))
+    g.board.set_piece_at(chess.G4, chess.Piece(chess.BISHOP, chess.WHITE))
+    g.board.set_piece_at(chess.D4, chess.Piece(chess.KING, chess.BLACK))
+    g.ask_for(chess.Move(chess.A8, chess.D5))
+    assert g.ask_for(chess.Move(chess.D4, chess.D5)) == (MA.CAPUTRE_DONE, chess.D5, SCA.DRAW_INSUFFICIENT)

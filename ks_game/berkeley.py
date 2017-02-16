@@ -24,17 +24,21 @@ class AnyRuleAnnouncement(enum.Enum):
 @enum.unique
 class SpecialCaseAnnouncement(enum.Enum):
     '''docstring for SpecialCaseAnnouncement'''
-    CHECKMATE = 1  #enum.auto()
-    STALEMATE = 2  #enum.auto()
-    FIVEFOLD_REPETITION = 3  #enum.auto()
-    SEVENTYFIVE_MOVES = 4  #enum.auto()
-    # CHECK = 5  #enum.auto()
-    CHECK_RANK = 6  #enum.auto()
-    CHECK_FILE = 7  #enum.auto()
-    CHECK_LONG_DIAGONAL = 8  #enum.auto()
-    CHECK_SHORT_DIAGONAL = 9  #enum.auto()
-    CHECK_KNIGHT = 10  #enum.auto()
-    CHECK_DOUBLE = 11  #enum.auto()
+    DRAW_FIVEFOLD = 1  #enum.auto()
+    DRAW_SEVENTYFIVE = 2  #enum.auto()
+    DRAW_STALEMATE = 3  #enum.auto()
+    DRAW_INSUFFICIENT = 4  #enum.auto()
+
+    CHECKMATE_WHITE_WINS = 5  #enum.auto()
+    CHECKMATE_BLACK_WINS = 6  #enum.auto()
+
+    CHECK_RANK = 7  #enum.auto()
+    CHECK_FILE = 8  #enum.auto()
+    CHECK_LONG_DIAGONAL = 9  #enum.auto()
+    CHECK_SHORT_DIAGONAL = 10  #enum.auto()
+    CHECK_KNIGHT = 11  #enum.auto()
+    CHECK_DOUBLE = 12  #enum.auto()
+
 
 
 class BerkeleyGame(object):
@@ -47,7 +51,7 @@ class BerkeleyGame(object):
     
     def ask_for(self, move):
         '''
-        return (MoveAnnouncement, captured_square, special_case)
+        return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         '''
         if isinstance(move, chess.Move):
             # Player asks about normal move
@@ -144,8 +148,22 @@ class BerkeleyGame(object):
                     return True
                 else:
                     raise KeyError
+
         if self.board.is_game_over():
-            return SpecialCaseAnnouncement.CHECKMATE
+            if self.board.is_fivefold_repetition():
+                return SpecialCaseAnnouncement.DRAW_FIVEFOLD
+            if self.board.is_seventyfive_moves():
+                return SpecialCaseAnnouncement.DRAW_SEVENTYFIVE
+            if self.board.is_stalemate():
+                return SpecialCaseAnnouncement.DRAW_STALEMATE
+            if self.board.is_insufficient_material():
+                return SpecialCaseAnnouncement.DRAW_INSUFFICIENT
+            if self.board.is_checkmate():
+                if self.board.result() == '1-0':
+                    return SpecialCaseAnnouncement.CHECKMATE_WHITE_WINS
+                elif self.board.result() == '0-1':
+                    return SpecialCaseAnnouncement.CHECKMATE_BLACK_WINS
+
         if self.board.is_check():
             sq = self.board.pieces(chess.KING, self.board.turn)
             king_square = sq.pop()
@@ -169,12 +187,6 @@ class BerkeleyGame(object):
                     return SpecialCaseAnnouncement.CHECK_KNIGHT
             else:
                 raise RuntimeError
-        if self.board.is_stalemate():
-            return SpecialCaseAnnouncement.STALEMATE
-        if self.board.is_fivefold_repetition():
-            return SpecialCaseAnnouncement.FIVEFOLD_REPETITION
-        if self.board.is_seventyfive_moves():
-            return SpecialCaseAnnouncement.SEVENTYFIVE_MOVES
         return None
 
     def _get_captured_square(self, move):
