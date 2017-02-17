@@ -8,6 +8,7 @@ import chess
 @enum.unique
 class MoveAnnouncement(enum.Enum):
     '''docstring for MoveAnnouncement'''
+    IMPOSSIBLE_TO_ASK = 0  #enum.auto()
     ILLEGAL_MOVE = 1  #enum.auto()
     REGULAR_MOVE = 2  #enum.auto()
     CAPUTRE_DONE = 3  #enum.auto()
@@ -48,11 +49,19 @@ class BerkeleyGame(object):
         super(BerkeleyGame).__init__()
         self.board = chess.Board()
         self._must_use_pawns = False
+        self._generate_possible_to_ask_list()
     
     def ask_for(self, move):
         '''
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         '''
+        if move not in self.possible_to_ask:
+            return (
+                MoveAnnouncement.IMPOSSIBLE_TO_ASK,
+                None,
+                None
+            )
+
         if isinstance(move, chess.Move):
             # Player asks about normal move
             if self._is_legal_move(move):
@@ -91,6 +100,8 @@ class BerkeleyGame(object):
             )
         elif move == AnyRuleAnnouncement.ASK_ANY:
             # Any Rule. Asking for any available pawn captures.
+            # Possible to ask once a turn
+            self.possible_to_ask.remove(AnyRuleAnnouncement.ASK_ANY)
             if self._has_any_pawn_captures():
                 self._must_use_pawns = True
                 return (
@@ -200,13 +211,12 @@ class BerkeleyGame(object):
 
     def _make_move(self, move):
         self._must_use_pawns = False
+        captured_square = None
         if self.board.is_capture(move):
             captured_square = self._get_captured_square(move)
-            self.board.push(move)
-            return captured_square
-        else:
-            self.board.push(move)
-            return None
+        self.board.push(move)
+        self._generate_possible_to_ask_list()
+        return captured_square
 
     def _has_any_pawn_captures(self):
         pawn_squares = self.board.pieces(chess.PAWN, self.board.turn)
@@ -218,3 +228,27 @@ class BerkeleyGame(object):
 
     def _is_legal_move(self, move):
         return move in self.board.legal_moves
+
+    def _generate_possible_to_ask_list(self):
+        # Very slow. :(
+        # Make a board that current player see
+        players_board = self.board.copy()
+        for square in chess.SQUARES:
+            if players_board.piece_at(square) is not None:
+                if players_board.piece_at(square).color is not self.board.turn:
+                    players_board.remove_piece_at(square)
+        # Now players_board is equal to board that current player see
+        # First collect all possible moves keeping in mind castling rules
+        possibilities = list(players_board.legal_moves)
+        # Second add possible pawn captures
+        for square in chess.SQUARES:
+            if players_board.piece_at(square) is not None:
+                if players_board.piece_type_at(square) == chess.PAWN:
+                    possibilities.extend([chess.Move(square, attacked) for attacked in list(players_board.attacks(square)) if players_board.piece_at(attacked) is None])
+        # Always possible to ask ANY?
+        possibilities.append(AnyRuleAnnouncement.ASK_ANY)
+        # And return with no dups
+        self.possible_to_ask = list(set(possibilities))
+
+    def is_possible_to_ask(self, move):
+        return move in self.possible_to_ask

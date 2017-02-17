@@ -166,6 +166,7 @@ def test_check_short_diagonal():
     g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.B2, chess.A3))
     assert g.ask_for(chess.Move(chess.D1, chess.C1)) == (MA.REGULAR_MOVE, None, SCA.CHECK_SHORT_DIAGONAL)
 
@@ -176,6 +177,7 @@ def test_check_file():
     g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.B2, chess.A3))
     assert g.ask_for(chess.Move(chess.D1, chess.A1)) == (MA.REGULAR_MOVE, None, SCA.CHECK_FILE)
 
@@ -186,6 +188,7 @@ def test_check_rank():
     g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.B2, chess.A3))
     assert g.ask_for(chess.Move(chess.D1, chess.D3)) == (MA.REGULAR_MOVE, None, SCA.CHECK_RANK)
 
@@ -196,6 +199,7 @@ def test_check_long_diagonal():
     g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.B2, chess.A3))
     assert g.ask_for(chess.Move(chess.D1, chess.D6)) == (MA.REGULAR_MOVE, None, SCA.CHECK_LONG_DIAGONAL)
 
@@ -206,8 +210,10 @@ def test_check_knight():
     g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.B2, chess.A3))
     g.board.set_piece_at(chess.C3, chess.Piece(chess.KNIGHT, chess.BLACK))
+    g._generate_possible_to_ask_list()
     assert g.ask_for(chess.Move(chess.C3, chess.B5)) == (MA.REGULAR_MOVE, None, SCA.CHECK_KNIGHT)
 
 
@@ -218,6 +224,7 @@ def test_check_double():
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.E2, chess.Piece(chess.QUEEN, chess.BLACK))
     g.board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.C2, chess.B2))
     assert g.ask_for(chess.Move(chess.D2, chess.C4)) == (MA.REGULAR_MOVE, None, SCA.CHECK_DOUBLE)
 
@@ -228,6 +235,7 @@ def test_promotion_check_long():
     g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
     g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._generate_possible_to_ask_list()
     assert g.ask_for(chess.Move(chess.A7, chess.A8, promotion=chess.QUEEN)) == (MA.REGULAR_MOVE, None, SCA.CHECK_LONG_DIAGONAL)
 
 
@@ -237,7 +245,8 @@ def test_impossible_to_promotion_without_piece_spesification():
     g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
     g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
-    assert g.ask_for(chess.Move(chess.A7, chess.A8)) == (MA.ILLEGAL_MOVE, None, None)
+    g._generate_possible_to_ask_list()
+    assert g.ask_for(chess.Move(chess.A7, chess.A8)) == (MA.IMPOSSIBLE_TO_ASK, None, None)
 
 
 def test_five_fold_draw():
@@ -271,6 +280,7 @@ def test_75_moves_draw():
     g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.D4, chess.Piece(chess.PAWN, chess.WHITE))
+    g._generate_possible_to_ask_list()
 
     white_king_sq = chess.A1
     for i in range(4):
@@ -378,6 +388,7 @@ def test_stalemate():
     g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
     g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._generate_possible_to_ask_list()
     assert g.ask_for(chess.Move(chess.A1, chess.A7)) == (MA.REGULAR_MOVE, None, SCA.DRAW_STALEMATE)
 
 
@@ -389,6 +400,7 @@ def test_white_wins():
     g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
     g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.WHITE))
     g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._generate_possible_to_ask_list()
     assert g.ask_for(chess.Move(chess.A1, chess.A8)) == (MA.REGULAR_MOVE, None, SCA.CHECKMATE_WHITE_WINS)
 
 
@@ -401,6 +413,7 @@ def test_black_wins():
     g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.BLACK))
     g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
     g.board.turn = chess.BLACK
+    g._generate_possible_to_ask_list()
     assert g.ask_for(chess.Move(chess.A1, chess.A8)) == (MA.REGULAR_MOVE, None, SCA.CHECKMATE_BLACK_WINS)
 
 
@@ -411,5 +424,61 @@ def test_draw_insufficient():
     g.board.set_piece_at(chess.F7, chess.Piece(chess.KING, chess.WHITE))
     g.board.set_piece_at(chess.G4, chess.Piece(chess.BISHOP, chess.WHITE))
     g.board.set_piece_at(chess.D4, chess.Piece(chess.KING, chess.BLACK))
+    g._generate_possible_to_ask_list()
     g.ask_for(chess.Move(chess.A8, chess.D5))
     assert g.ask_for(chess.Move(chess.D4, chess.D5)) == (MA.CAPUTRE_DONE, chess.D5, SCA.DRAW_INSUFFICIENT)
+
+
+def test_impossible_ask_move_from_empty_square():
+    g = BerkeleyGame()
+    assert g.ask_for(chess.Move(chess.E3, chess.E4)) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+
+
+def test_illegal_to_castling_through_check():
+    g = BerkeleyGame()
+    g.ask_for(chess.Move(chess.E2, chess.E4))
+    g.ask_for(chess.Move(chess.E7, chess.E5))
+    g.ask_for(chess.Move(chess.F1, chess.C4))
+    g.ask_for(chess.Move(chess.F8, chess.C5))
+    g.ask_for(chess.Move(chess.G1, chess.H3))
+    g.ask_for(chess.Move(chess.G8, chess.H6))
+    g.ask_for(chess.Move(chess.F2, chess.F4))
+    g.ask_for(chess.Move(chess.B8, chess.A6))
+    assert g.ask_for(chess.Move(chess.E1, chess.G1)) == (MA.ILLEGAL_MOVE, None, None)
+
+
+def test_castling():
+    g = BerkeleyGame()
+    g.ask_for(chess.Move(chess.E2, chess.E4))
+    g.ask_for(chess.Move(chess.E7, chess.E5))
+    g.ask_for(chess.Move(chess.F1, chess.C4))
+    g.ask_for(chess.Move(chess.F8, chess.C5))
+    g.ask_for(chess.Move(chess.G1, chess.H3))
+    g.ask_for(chess.Move(chess.G8, chess.H6))
+    assert g.ask_for(chess.Move(chess.E1, chess.G1)) == (MA.REGULAR_MOVE, None, None)
+
+
+def test_impossible_ask_castling_after_move():
+    g = BerkeleyGame()
+    g.ask_for(chess.Move(chess.E2, chess.E4))
+    g.ask_for(chess.Move(chess.E7, chess.E5))
+    g.ask_for(chess.Move(chess.F1, chess.C4))
+    g.ask_for(chess.Move(chess.F8, chess.C5))
+    g.ask_for(chess.Move(chess.G1, chess.H3))
+    g.ask_for(chess.Move(chess.G8, chess.H6))
+    g.ask_for(chess.Move(chess.F2, chess.F4))
+    g.ask_for(chess.Move(chess.F7, chess.F5))
+    g.ask_for(chess.Move(chess.E1, chess.E2))
+    g.ask_for(chess.Move(chess.C5, chess.F8))
+    assert g.ask_for(chess.Move(chess.E1, chess.G1)) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+
+
+def test_35_possibilities_in_init():
+    g = BerkeleyGame()
+    assert len(g.possible_to_ask) == 35
+
+
+def test_ask_for_any_only_once():
+    g = BerkeleyGame()
+    g.ask_for(ARA.ASK_ANY)
+    assert g.ask_for(ARA.ASK_ANY) == (MA.IMPOSSIBLE_TO_ASK, None, None)
