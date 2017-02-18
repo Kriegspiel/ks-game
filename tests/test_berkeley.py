@@ -490,3 +490,8 @@ def test_impossible_ask_nonpawnmoves_after_askany():
     g.ask_for(chess.Move(chess.D7, chess.D5))
     g.ask_for(ARA.ASK_ANY)
     assert (chess.Move(chess.B1, chess.C3) in g.possible_to_ask) is False
+
+
+def test_always_possible_to_ask_any():
+    g = BerkeleyGame()
+    assert (ARA.ASK_ANY in g.possible_to_ask) is True
