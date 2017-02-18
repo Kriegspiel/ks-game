@@ -41,7 +41,6 @@ class SpecialCaseAnnouncement(enum.Enum):
     CHECK_DOUBLE = 12  #enum.auto()
 
 
-
 class BerkeleyGame(object):
     '''docstring for BerkeleyGame'''
 
@@ -50,7 +49,7 @@ class BerkeleyGame(object):
         self.board = chess.Board()
         self._must_use_pawns = False
         self._generate_possible_to_ask_list()
-    
+
     def ask_for(self, move):
         '''
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
@@ -104,6 +103,7 @@ class BerkeleyGame(object):
             self.possible_to_ask.remove(AnyRuleAnnouncement.ASK_ANY)
             if self._has_any_pawn_captures():
                 self._must_use_pawns = True
+                self._generate_possible_to_ask_list()
                 return (
                     AnyRuleAnnouncement.HAS_ANY,
                     None,
@@ -127,17 +127,21 @@ class BerkeleyGame(object):
         def same_rank(from_sq, to_sq):
             # Or same row
             return from_sq // 8 == to_sq // 8
+
         def same_file(from_sq, to_sq):
             # Or same column
             return from_sq % 8 == to_sq % 8
+
         def SW_NE_diagonal(from_sq, to_sq):
             # Or on one lower-left upper-right diagonal
             # Parallel to A1H8
             return ((from_sq // 8) - (to_sq // 8)) == ((from_sq % 8) - (to_sq % 8))
+
         def NW_SE_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
             # Parallel to A8H1
             return ((from_sq // 8) - (to_sq // 8)) == -((from_sq % 8) - (to_sq % 8))
+
         def is_short_diagonal(from_sq, to_sq):
             '''
             return True is diagonal is short
@@ -238,15 +242,17 @@ class BerkeleyGame(object):
                 if players_board.piece_at(square).color is not self.board.turn:
                     players_board.remove_piece_at(square)
         # Now players_board is equal to board that current player see
+        possibilities = list()
         # First collect all possible moves keeping in mind castling rules
-        possibilities = list(players_board.legal_moves)
+        if not self._must_use_pawns:
+            possibilities.extend(players_board.legal_moves)
+            # Always possible to ask ANY?
+            possibilities.append(AnyRuleAnnouncement.ASK_ANY)
         # Second add possible pawn captures
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:
                 if players_board.piece_type_at(square) == chess.PAWN:
                     possibilities.extend([chess.Move(square, attacked) for attacked in list(players_board.attacks(square)) if players_board.piece_at(attacked) is None])
-        # Always possible to ask ANY?
-        possibilities.append(AnyRuleAnnouncement.ASK_ANY)
         # And return with no dups
         self.possible_to_ask = list(set(possibilities))
 

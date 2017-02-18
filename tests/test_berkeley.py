@@ -48,7 +48,7 @@ def test_black_illegal_after_any_true():
     g.ask_for(chess.Move.from_uci('h5g6'))
     g.ask_for(ARA.ASK_ANY)
     # Legal in chess, but illegal after ask 'for any'
-    assert g.ask_for(chess.Move.from_uci('d8d7')) == (MA.ILLEGAL_MOVE, None, None)
+    assert g.ask_for(chess.Move.from_uci('d8d7')) == (MA.IMPOSSIBLE_TO_ASK, None, None)
 
 
 def test_black_legal_after_any_true():
@@ -482,3 +482,11 @@ def test_ask_for_any_only_once():
     g = BerkeleyGame()
     g.ask_for(ARA.ASK_ANY)
     assert g.ask_for(ARA.ASK_ANY) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+
+
+def test_impossible_ask_nonpawnmoves_after_askany():
+    g = BerkeleyGame()
+    g.ask_for(chess.Move(chess.E2, chess.E4))
+    g.ask_for(chess.Move(chess.D7, chess.D5))
+    g.ask_for(ARA.ASK_ANY)
+    assert (chess.Move(chess.B1, chess.C3) in g.possible_to_ask) is False
