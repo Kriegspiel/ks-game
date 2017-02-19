@@ -60,7 +60,7 @@ def test_black_legal_after_any_true():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
     g.ask_for(KSMove(QA.ASK_ANY))
     # Capture by pawn after ANY
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4))) == (MA.CAPUTRE_DONE, chess.E4, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4))) == (MA.CAPTURE_DONE, chess.E4, None)
 
 
 def test_white_any_false():
@@ -85,7 +85,7 @@ def test_white_capture_and_check():
     g.ask_for(KSMove(QA.ASK_ANY))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4)))
     g.ask_for(KSMove(QA.ASK_ANY))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7))) == (MA.CAPUTRE_DONE, chess.F7, SCA.CHECK_SHORT_DIAGONAL)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7))) == (MA.CAPTURE_DONE, chess.F7, SCA.CHECK_SHORT_DIAGONAL)
 
 
 def test_black_from_check_false():
@@ -114,7 +114,7 @@ def test_black_from_check_true_and_capture():
     g.ask_for(KSMove(QA.ASK_ANY))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.E7)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.F7))) == (MA.CAPUTRE_DONE, chess.F7, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.F7))) == (MA.CAPTURE_DONE, chess.F7, None)
 
 
 def test_black_any_true_en_passant():
@@ -157,7 +157,7 @@ def test_black_capture_en_passant():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E5, chess.E4)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F2, chess.F4)))
     g.ask_for(KSMove(QA.ASK_ANY))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.F3))) == (MA.CAPUTRE_DONE, chess.F4, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.F3))) == (MA.CAPTURE_DONE, chess.F4, None)
 
 
 def test_check_short_diagonal():
@@ -426,7 +426,7 @@ def test_draw_insufficient():
     g.board.set_piece_at(chess.D4, chess.Piece(chess.KING, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A8, chess.D5)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D4, chess.D5))) == (MA.CAPUTRE_DONE, chess.D5, SCA.DRAW_INSUFFICIENT)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D4, chess.D5))) == (MA.CAPTURE_DONE, chess.D5, SCA.DRAW_INSUFFICIENT)
 
 
 def test_impossible_ask_move_from_empty_square():

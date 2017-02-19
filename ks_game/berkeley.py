@@ -127,27 +127,30 @@ class BerkeleyGame(object):
     def _check_special_cases(self):
         def same_rank(from_sq, to_sq):
             # Or same row
-            return from_sq // 8 == to_sq // 8
+            return chess.rank_index(from_sq) == chess.rank_index(to_sq)
 
         def same_file(from_sq, to_sq):
             # Or same column
-            return from_sq % 8 == to_sq % 8
+            return chess.file_index(from_sq) == chess.file_index(to_sq)
 
         def sw_ne_diagonal(from_sq, to_sq):
             # Or on one lower-left upper-right diagonal
             # Parallel to A1H8
-            return ((from_sq // 8) - (to_sq // 8)) == ((from_sq % 8) - (to_sq % 8))
+            return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
+                    (chess.file_index(from_sq) - chess.file_index(to_sq)))
 
         def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
             # Parallel to A8H1
-            return ((from_sq // 8) - (to_sq // 8)) == -((from_sq % 8) - (to_sq % 8))
+            return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
+                    -(chess.file_index(from_sq) - chess.file_index(to_sq)))
 
         def is_short_diagonal(from_sq, to_sq):
             '''
             return True is diagonal is short
             '''
-            if (to_sq // 8 <= 3) and (to_sq % 8 <= 3) or (to_sq // 8 > 3) and (to_sq % 8 > 3):
+            if (((to_sq // 8 <= 3) and (to_sq % 8 <= 3)) or
+                    ((to_sq // 8 > 3) and (to_sq % 8 > 3))):
                 # This means that King is in lower-left quadrant or
                 # in upper-right quadrant
                 # In this quadrants NW_SE_diagonals are shortest

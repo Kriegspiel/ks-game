@@ -18,7 +18,8 @@ class KriegspielMove(object):
         # Validation
         if not isinstance(question_type, QuestionAnnouncement):
             raise TypeError
-        if question_type == QuestionAnnouncement.COMMON and not isinstance(chess_move, chess.Move):
+        if (question_type == QuestionAnnouncement.COMMON and
+                not isinstance(chess_move, chess.Move)):
             raise TypeError
         self.question_type = question_type
         self.chess_move = chess_move
