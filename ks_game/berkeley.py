@@ -4,6 +4,9 @@ import enum
 
 import chess
 
+from ks_game.ks_move import KriegspielMove as KSMove
+from ks_game.ks_move import QuestionAnnouncement as QA
+
 
 @enum.unique
 class MoveAnnouncement(enum.Enum):
@@ -13,13 +16,8 @@ class MoveAnnouncement(enum.Enum):
     REGULAR_MOVE = 2  #enum.auto()
     CAPUTRE_DONE = 3  #enum.auto()
 
-
-@enum.unique
-class AnyRuleAnnouncement(enum.Enum):
-    '''docstring for AnyRuleAnnouncement'''
-    HAS_ANY = 1  #enum.auto()
-    NO_ANY = 2  #enum.auto()
-    ASK_ANY = 3  #enum.auto()
+    HAS_ANY = 4  #enum.auto()
+    NO_ANY = 5  #enum.auto()
 
 
 @enum.unique
@@ -54,6 +52,9 @@ class BerkeleyGame(object):
         '''
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         '''
+        if not isinstance(move, KSMove):
+            raise TypeError
+
         if move not in self.possible_to_ask:
             return (
                 MoveAnnouncement.IMPOSSIBLE_TO_ASK,
@@ -61,11 +62,11 @@ class BerkeleyGame(object):
                 None
             )
 
-        if isinstance(move, chess.Move):
-            # Player asks about normal move
-            if self._is_legal_move(move):
+        if move.question_type == QA.COMMON:
+            # Player asks about common move
+            if self._is_legal_move(move.chess_move):
                 # Move is legal in normal chess
-                if not self._check_if_must_use_pawns_rule(move):
+                if not self._check_if_must_use_pawns_rule(move.chess_move):
                     # Move is illigal, because player have asked
                     # about any possible pawn captures and there
                     # are some pawn captures, but now tries to
@@ -76,7 +77,7 @@ class BerkeleyGame(object):
                         None
                     )
                 # Perform normal move
-                captured_square = self._make_move(move)
+                captured_square = self._make_move(move.chess_move)
                 special_case = self._check_special_cases()
                 if captured_square is not None:
                     # If it was capture
@@ -97,21 +98,21 @@ class BerkeleyGame(object):
                 None,
                 None
             )
-        elif move == AnyRuleAnnouncement.ASK_ANY:
+        elif move.question_type == QA.ASK_ANY:
             # Any Rule. Asking for any available pawn captures.
             # Possible to ask once a turn
-            self.possible_to_ask.remove(AnyRuleAnnouncement.ASK_ANY)
+            self.possible_to_ask.remove(KSMove(QA.ASK_ANY))
             if self._has_any_pawn_captures():
                 self._must_use_pawns = True
                 self._generate_possible_to_ask_list()
                 return (
-                    AnyRuleAnnouncement.HAS_ANY,
+                    MoveAnnouncement.HAS_ANY,
                     None,
                     None
                 )
             else:
                 return (
-                    AnyRuleAnnouncement.NO_ANY,
+                    MoveAnnouncement.NO_ANY,
                     None,
                     None
                 )
@@ -132,12 +133,12 @@ class BerkeleyGame(object):
             # Or same column
             return from_sq % 8 == to_sq % 8
 
-        def SW_NE_diagonal(from_sq, to_sq):
+        def sw_ne_diagonal(from_sq, to_sq):
             # Or on one lower-left upper-right diagonal
             # Parallel to A1H8
             return ((from_sq // 8) - (to_sq // 8)) == ((from_sq % 8) - (to_sq % 8))
 
-        def NW_SE_diagonal(from_sq, to_sq):
+        def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
             # Parallel to A8H1
             return ((from_sq // 8) - (to_sq // 8)) == -((from_sq % 8) - (to_sq % 8))
@@ -147,19 +148,20 @@ class BerkeleyGame(object):
             return True is diagonal is short
             '''
             if (to_sq // 8 <= 3) and (to_sq % 8 <= 3) or (to_sq // 8 > 3) and (to_sq % 8 > 3):
-                # This means that King is in lower-left quadrant or in upper-right quadrant
+                # This means that King is in lower-left quadrant or
+                # in upper-right quadrant
                 # In this quadrants NW_SE_diagonals are shortest
-                if NW_SE_diagonal(from_sq, to_sq):
+                if nw_se_diagonal(from_sq, to_sq):
                     return True
-                elif SW_NE_diagonal(from_sq, to_sq):
+                elif sw_ne_diagonal(from_sq, to_sq):
                     return False
                 else:
                     raise KeyError
             else:
                 # Other two quadrants. And diagonals are vise-versa.
-                if NW_SE_diagonal(from_sq, to_sq):
+                if nw_se_diagonal(from_sq, to_sq):
                     return False
-                elif SW_NE_diagonal(from_sq, to_sq):
+                elif sw_ne_diagonal(from_sq, to_sq):
                     return True
                 else:
                     raise KeyError
@@ -192,8 +194,8 @@ class BerkeleyGame(object):
                     return SpecialCaseAnnouncement.CHECK_FILE
                 elif same_rank(attacker_square, king_square):
                     return SpecialCaseAnnouncement.CHECK_RANK
-                elif (SW_NE_diagonal(attacker_square, king_square)
-                            or NW_SE_diagonal(attacker_square, king_square)):
+                elif (sw_ne_diagonal(attacker_square, king_square) or
+                      nw_se_diagonal(attacker_square, king_square)):
                     if is_short_diagonal(attacker_square, king_square):
                         return SpecialCaseAnnouncement.CHECK_SHORT_DIAGONAL
                     else:
@@ -245,14 +247,21 @@ class BerkeleyGame(object):
         possibilities = list()
         # First collect all possible moves keeping in mind castling rules
         if not self._must_use_pawns:
-            possibilities.extend(players_board.legal_moves)
+            possibilities.extend([
+                KSMove(QA.COMMON, chess_move)
+                for chess_move in players_board.legal_moves
+            ])
             # Always possible to ask ANY?
-            possibilities.append(AnyRuleAnnouncement.ASK_ANY)
+            possibilities.append(KSMove(QA.ASK_ANY))
         # Second add possible pawn captures
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:
                 if players_board.piece_type_at(square) == chess.PAWN:
-                    possibilities.extend([chess.Move(square, attacked) for attacked in list(players_board.attacks(square)) if players_board.piece_at(attacked) is None])
+                    possibilities.extend([
+                        KSMove(QA.COMMON, chess.Move(square, attacked))
+                        for attacked in list(players_board.attacks(square))
+                        if players_board.piece_at(attacked) is None
+                    ])
         # And return with no dups
         self.possible_to_ask = list(set(possibilities))
 
