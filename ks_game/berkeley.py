@@ -141,7 +141,7 @@ class BerkeleyGame(object):
 
         def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
-            # Parallel to A8H
+            # Parallel to A8H1
             return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
                     -(chess.file_index(from_sq) - chess.file_index(to_sq)))
 
