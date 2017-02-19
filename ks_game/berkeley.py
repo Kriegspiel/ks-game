@@ -14,7 +14,7 @@ class MoveAnnouncement(enum.Enum):
     IMPOSSIBLE_TO_ASK = 0  #enum.auto()
     ILLEGAL_MOVE = 1  #enum.auto()
     REGULAR_MOVE = 2  #enum.auto()
-    CAPUTRE_DONE = 3  #enum.auto()
+    CAPTURE_DONE = 3  #enum.auto()
 
     HAS_ANY = 4  #enum.auto()
     NO_ANY = 5  #enum.auto()
@@ -82,7 +82,7 @@ class BerkeleyGame(object):
                 if captured_square is not None:
                     # If it was capture
                     return (
-                        MoveAnnouncement.CAPUTRE_DONE,
+                        MoveAnnouncement.CAPTURE_DONE,
                         captured_square,
                         special_case
                     )
@@ -141,7 +141,7 @@ class BerkeleyGame(object):
 
         def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
-            # Parallel to A8H1
+            # Parallel to A8H
             return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
                     -(chess.file_index(from_sq) - chess.file_index(to_sq)))
 
