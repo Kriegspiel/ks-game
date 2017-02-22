@@ -495,3 +495,23 @@ def test_impossible_ask_nonpawnmoves_after_askany():
 def test_always_possible_to_ask_any():
     g = BerkeleyGame()
     assert (KSMove(QA.ASK_ANY) in g.possible_to_ask) is True
+
+
+def test_possible_capture_with_promotion():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._generate_possible_to_ask_list()
+    assert KSMove(QA.COMMON, chess.Move(chess.A7, chess.B8, promotion=chess.BISHOP)) in g.possible_to_ask
+
+
+def test_12_possibilities_with_pawn_capture_and_promotion():
+    g = BerkeleyGame()
+    g.board.clear()
+    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._generate_possible_to_ask_list()
+    assert len(g.possible_to_ask) == 12

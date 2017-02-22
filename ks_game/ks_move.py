@@ -45,5 +45,14 @@ class KriegspielMove(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __lt__(self, other):
+        if self.question_type.value < other.question_type.value:
+            return True
+        if self.question_type.value == other.question_type.value:
+            if self.chess_move.uci() < other.chess_move.uci():
+                return True
+            return False
+        return False
+
     def __hash__(self):
         return hash(self.__str__())

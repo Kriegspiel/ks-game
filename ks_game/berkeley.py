@@ -149,8 +149,8 @@ class BerkeleyGame(object):
             '''
             return True is diagonal is short
             '''
-            if (((to_sq // 8 <= 3) and (to_sq % 8 <= 3)) or
-                    ((to_sq // 8 > 3) and (to_sq % 8 > 3))):
+            if (((chess.rank_index(to_sq) <= 3) and (chess.file_index(to_sq) <= 3)) or
+                    ((chess.rank_index(to_sq) > 3) and (chess.file_index(to_sq) > 3))):
                 # This means that King is in lower-left quadrant or
                 # in upper-right quadrant
                 # In this quadrants NW_SE_diagonals are shortest
@@ -257,15 +257,21 @@ class BerkeleyGame(object):
             # Always possible to ask ANY?
             possibilities.append(KSMove(QA.ASK_ANY))
         # Second add possible pawn captures
-        for square in chess.SQUARES:
-            if players_board.piece_at(square) is not None:
-                if players_board.piece_type_at(square) == chess.PAWN:
-                    possibilities.extend([
-                        KSMove(QA.COMMON, chess.Move(square, attacked))
-                        for attacked in list(players_board.attacks(square))
-                        if players_board.piece_at(attacked) is None
-                    ])
-        # And return with no dups
+        for square in list(self.board.pieces(chess.PAWN, self.board.turn)):
+            for attacked in list(players_board.attacks(square)):
+                if players_board.piece_at(attacked) is None:
+                    if chess.rank_index(attacked) in (0, 7):
+                        # If capture is promotion for pawn.
+                        possibilities.extend([
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.QUEEN)),
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.BISHOP)),
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.KNIGHT)),
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.ROOK))
+                        ])
+                    else:
+                        # If capture is not promotion for pawn
+                        possibilities.append(KSMove(QA.COMMON, chess.Move(square, attacked)))
+        # And remove finally — remove duplicates
         self.possible_to_ask = list(set(possibilities))
 
     def is_possible_to_ask(self, move):
