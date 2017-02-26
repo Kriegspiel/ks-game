@@ -23,8 +23,7 @@ class MoveAnnouncement(enum.Enum):
 @enum.unique
 class SpecialCaseAnnouncement(enum.Enum):
     '''docstring for SpecialCaseAnnouncement'''
-    DRAW_FIVEFOLD = 1  #enum.auto()
-    DRAW_SEVENTYFIVE = 2  #enum.auto()
+    DRAW_TWOHUNDRED = 2  #enum.auto()
     DRAW_STALEMATE = 3  #enum.auto()
     DRAW_INSUFFICIENT = 4  #enum.auto()
 
@@ -46,6 +45,7 @@ class BerkeleyGame(object):
         super(BerkeleyGame).__init__()
         self.board = chess.Board()
         self._must_use_pawns = False
+        self.game_over = False
         self._generate_possible_to_ask_list()
 
     def ask_for(self, move):
@@ -124,6 +124,17 @@ class BerkeleyGame(object):
             return self.board.piece_type_at(move.from_square) == chess.PAWN
         return True
 
+    def is_game_over(self):
+        if self.board.is_stalemate():
+            return True
+        if self.board.is_insufficient_material():
+            return True
+        if self.board.is_checkmate():
+            return True
+        if self.board.halfmove_clock == 200:
+            return True
+        return False
+
     def _check_special_cases(self):
         def same_rank(from_sq, to_sq):
             # Or same row
@@ -169,11 +180,9 @@ class BerkeleyGame(object):
                 else:
                     raise KeyError
 
-        if self.board.is_game_over():
-            if self.board.is_fivefold_repetition():
-                return SpecialCaseAnnouncement.DRAW_FIVEFOLD
-            if self.board.is_seventyfive_moves():
-                return SpecialCaseAnnouncement.DRAW_SEVENTYFIVE
+        if self.is_game_over():
+            self.game_over = True
+            self._generate_possible_to_ask_list()
             if self.board.is_stalemate():
                 return SpecialCaseAnnouncement.DRAW_STALEMATE
             if self.board.is_insufficient_material():
@@ -183,6 +192,8 @@ class BerkeleyGame(object):
                     return SpecialCaseAnnouncement.CHECKMATE_WHITE_WINS
                 elif self.board.result() == '0-1':
                     return SpecialCaseAnnouncement.CHECKMATE_BLACK_WINS
+            if self.board.halfmove_clock == 200:
+                return SpecialCaseAnnouncement.DRAW_TWOHUNDRED
 
         if self.board.is_check():
             sq = self.board.pieces(chess.KING, self.board.turn)
@@ -241,6 +252,9 @@ class BerkeleyGame(object):
     def _generate_possible_to_ask_list(self):
         # Very slow. :(
         # Make a board that current player see
+        if self.game_over:
+            self.possible_to_ask = list()
+            return
         players_board = self.board.copy()
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:

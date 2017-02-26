@@ -51,7 +51,6 @@ class KriegspielMove(object):
         if self.question_type.value == other.question_type.value:
             if self.chess_move.uci() < other.chess_move.uci():
                 return True
-            return False
         return False
 
     def __hash__(self):
