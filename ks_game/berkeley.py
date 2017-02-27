@@ -7,35 +7,12 @@ import chess
 from ks_game.ks_move import KriegspielMove as KSMove
 from ks_game.ks_move import QuestionAnnouncement as QA
 
-
-@enum.unique
-class MoveAnnouncement(enum.Enum):
-    '''docstring for MoveAnnouncement'''
-    IMPOSSIBLE_TO_ASK = 0  #enum.auto()
-    ILLEGAL_MOVE = 1  #enum.auto()
-    REGULAR_MOVE = 2  #enum.auto()
-    CAPTURE_DONE = 3  #enum.auto()
-
-    HAS_ANY = 4  #enum.auto()
-    NO_ANY = 5  #enum.auto()
+from ks_game.ks_move import KriegspielAnswer as KSAnswer
+from ks_game.ks_move import MainAnnouncement as MA
+from ks_game.ks_move import SpecialCaseAnnouncement as SCA
 
 
-@enum.unique
-class SpecialCaseAnnouncement(enum.Enum):
-    '''docstring for SpecialCaseAnnouncement'''
-    DRAW_TWOHUNDRED = 2  #enum.auto()
-    DRAW_STALEMATE = 3  #enum.auto()
-    DRAW_INSUFFICIENT = 4  #enum.auto()
-
-    CHECKMATE_WHITE_WINS = 5  #enum.auto()
-    CHECKMATE_BLACK_WINS = 6  #enum.auto()
-
-    CHECK_RANK = 7  #enum.auto()
-    CHECK_FILE = 8  #enum.auto()
-    CHECK_LONG_DIAGONAL = 9  #enum.auto()
-    CHECK_SHORT_DIAGONAL = 10  #enum.auto()
-    CHECK_KNIGHT = 11  #enum.auto()
-    CHECK_DOUBLE = 12  #enum.auto()
+HALFMOVE_CLOCK_LIMIT = 2000
 
 
 class BerkeleyGame(object):
@@ -43,9 +20,9 @@ class BerkeleyGame(object):
 
     def __init__(self):
         super(BerkeleyGame).__init__()
-        self.board = chess.Board()
+        self._board = chess.Board()
         self._must_use_pawns = False
-        self.game_over = False
+        self._game_over = False
         self._generate_possible_to_ask_list()
 
     def ask_for(self, move):
@@ -55,12 +32,8 @@ class BerkeleyGame(object):
         if not isinstance(move, KSMove):
             raise TypeError
 
-        if move not in self.possible_to_ask:
-            return (
-                MoveAnnouncement.IMPOSSIBLE_TO_ASK,
-                None,
-                None
-            )
+        if move not in self._possible_to_ask:
+            return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
         if move.question_type == QA.COMMON:
             # Player asks about common move
@@ -71,67 +44,50 @@ class BerkeleyGame(object):
                     # about any possible pawn captures and there
                     # are some pawn captures, but now tries to
                     # play another piece.
-                    return (
-                        MoveAnnouncement.ILLEGAL_MOVE,
-                        None,
-                        None
-                    )
+                    return KSAnswer(MA.ILLEGAL_MOVE)
                 # Perform normal move
                 captured_square = self._make_move(move.chess_move)
                 special_case = self._check_special_cases()
                 if captured_square is not None:
                     # If it was capture
-                    return (
-                        MoveAnnouncement.CAPTURE_DONE,
-                        captured_square,
-                        special_case
+                    return KSAnswer(MA.CAPTURE_DONE,
+                        capture_at_square=captured_square,
+                        special_announcement=special_case
                     )
                 # If it was regular move
-                return (
-                    MoveAnnouncement.REGULAR_MOVE,
-                    None,
-                    special_case
+                return KSAnswer(MA.REGULAR_MOVE,
+                    special_announcement=special_case
                 )
             # If move is illegal
-            return (
-                MoveAnnouncement.ILLEGAL_MOVE,
-                None,
-                None
-            )
+            return KSAnswer(MA.ILLEGAL_MOVE)
         elif move.question_type == QA.ASK_ANY:
             # Any Rule. Asking for any available pawn captures.
             # Possible to ask once a turn
-            self.possible_to_ask.remove(KSMove(QA.ASK_ANY))
+            self._possible_to_ask.remove(KSMove(QA.ASK_ANY))
             if self._has_any_pawn_captures():
                 self._must_use_pawns = True
                 self._generate_possible_to_ask_list()
-                return (
-                    MoveAnnouncement.HAS_ANY,
-                    None,
-                    None
-                )
+                return KSAnswer(MA.HAS_ANY)
             else:
-                return (
-                    MoveAnnouncement.NO_ANY,
-                    None,
-                    None
-                )
+                return KSAnswer(MA.NO_ANY)
         else:
             raise TypeError
 
     def _check_if_must_use_pawns_rule(self, move):
         if self._must_use_pawns:
-            return self.board.piece_type_at(move.from_square) == chess.PAWN
+            return self._board.piece_type_at(move.from_square) == chess.PAWN
         return True
 
     def is_game_over(self):
-        if self.board.is_stalemate():
+        if self._game_over:
             return True
-        if self.board.is_insufficient_material():
+        if self._board.is_stalemate():
             return True
-        if self.board.is_checkmate():
+        if self._board.is_insufficient_material():
             return True
-        if self.board.halfmove_clock == 200:
+        if self._board.is_checkmate():
+            return True
+        if self._board.halfmove_clock == HALFMOVE_CLOCK_LIMIT:
             return True
         return False
 
@@ -181,50 +137,50 @@ class BerkeleyGame(object):
                     raise KeyError
 
         if self.is_game_over():
-            self.game_over = True
+            self._game_over = True
             self._generate_possible_to_ask_list()
-            if self.board.is_stalemate():
-                return SpecialCaseAnnouncement.DRAW_STALEMATE
-            if self.board.is_insufficient_material():
-                return SpecialCaseAnnouncement.DRAW_INSUFFICIENT
-            if self.board.is_checkmate():
-                if self.board.result() == '1-0':
-                    return SpecialCaseAnnouncement.CHECKMATE_WHITE_WINS
-                elif self.board.result() == '0-1':
-                    return SpecialCaseAnnouncement.CHECKMATE_BLACK_WINS
-            if self.board.halfmove_clock == 200:
-                return SpecialCaseAnnouncement.DRAW_TWOHUNDRED
+            if self._board.is_stalemate():
+                return SCA.DRAW_STALEMATE
+            if self._board.is_insufficient_material():
+                return SCA.DRAW_INSUFFICIENT
+            if self._board.is_checkmate():
+                if self._board.result() == '1-0':
+                    return SCA.CHECKMATE_WHITE_WINS
+                elif self._board.result() == '0-1':
+                    return SCA.CHECKMATE_BLACK_WINS
+            if self._board.halfmove_clock == HALFMOVE_CLOCK_LIMIT:
+                return SCA.DRAW_TOOMANYREVERSIBLEMOVES
 
-        if self.board.is_check():
-            sq = self.board.pieces(chess.KING, self.board.turn)
+        if self._board.is_check():
+            sq = self._board.pieces(chess.KING, self._board.turn)
             king_square = sq.pop()
-            attackers = self.board.attackers(not self.board.turn, king_square)
+            attackers = self._board.attackers(not self._board.turn, king_square)
             attackers_squares = list(attackers)
             if len(attackers_squares) > 1:
-                return SpecialCaseAnnouncement.CHECK_DOUBLE
+                return SCA.CHECK_DOUBLE
             elif len(attackers_squares) == 1:
                 attacker_square = attackers_squares[0]
                 if same_file(attacker_square, king_square):
-                    return SpecialCaseAnnouncement.CHECK_FILE
+                    return SCA.CHECK_FILE
                 elif same_rank(attacker_square, king_square):
-                    return SpecialCaseAnnouncement.CHECK_RANK
+                    return SCA.CHECK_RANK
                 elif (sw_ne_diagonal(attacker_square, king_square) or
                       nw_se_diagonal(attacker_square, king_square)):
                     if is_short_diagonal(attacker_square, king_square):
-                        return SpecialCaseAnnouncement.CHECK_SHORT_DIAGONAL
+                        return SCA.CHECK_SHORT_DIAGONAL
                     else:
-                        return SpecialCaseAnnouncement.CHECK_LONG_DIAGONAL
+                        return SCA.CHECK_LONG_DIAGONAL
                 else:
-                    return SpecialCaseAnnouncement.CHECK_KNIGHT
+                    return SCA.CHECK_KNIGHT
             else:
                 raise RuntimeError
-        return None
+        return SCA.NONE
 
     def _get_captured_square(self, move):
-        if not self.board.is_en_passant(move):
+        if not self._board.is_en_passant(move):
             return move.to_square
         else:
-            if self.board.turn == chess.WHITE:
+            if self._board.turn == chess.WHITE:
                 return move.to_square - 8
             else:
                 return move.to_square + 8
@@ -232,33 +188,33 @@ class BerkeleyGame(object):
     def _make_move(self, move):
         self._must_use_pawns = False
         captured_square = None
-        if self.board.is_capture(move):
+        if self._board.is_capture(move):
             captured_square = self._get_captured_square(move)
-        self.board.push(move)
+        self._board.push(move)
         self._generate_possible_to_ask_list()
         return captured_square
 
     def _has_any_pawn_captures(self):
-        pawn_squares = self.board.pieces(chess.PAWN, self.board.turn)
-        for move in self.board.legal_moves:
+        pawn_squares = self._board.pieces(chess.PAWN, self._board.turn)
+        for move in self._board.legal_moves:
             if move.from_square in pawn_squares:
-                if self.board.is_capture(move):
+                if self._board.is_capture(move):
                     return True
         return False
 
     def _is_legal_move(self, move):
-        return move in self.board.legal_moves
+        return move in self._board.legal_moves
 
     def _generate_possible_to_ask_list(self):
         # Very slow. :(
-        # Make a board that current player see
-        if self.game_over:
-            self.possible_to_ask = list()
+        if self._game_over:
+            self._possible_to_ask = list()
             return
-        players_board = self.board.copy()
+        # Make a board that current player see
+        players_board = self._board.copy()
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:
-                if players_board.piece_at(square).color is not self.board.turn:
+                if players_board.piece_at(square).color is not self._board.turn:
                     players_board.remove_piece_at(square)
         # Now players_board is equal to board that current player see
         possibilities = list()
@@ -271,7 +227,7 @@ class BerkeleyGame(object):
             # Always possible to ask ANY?
             possibilities.append(KSMove(QA.ASK_ANY))
         # Second add possible pawn captures
-        for square in list(self.board.pieces(chess.PAWN, self.board.turn)):
+        for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
             for attacked in list(players_board.attacks(square)):
                 if players_board.piece_at(attacked) is None:
                     if chess.rank_index(attacked) in (0, 7):
@@ -286,7 +242,23 @@ class BerkeleyGame(object):
                         # If capture is not promotion for pawn
                         possibilities.append(KSMove(QA.COMMON, chess.Move(square, attacked)))
         # And remove finally — remove duplicates
-        self.possible_to_ask = list(set(possibilities))
+        self._possible_to_ask = list(set(possibilities))
+
+    @property
+    def possible_to_ask(self):
+        return self._possible_to_ask
+
+    @property
+    def game_over(self):
+        return self._game_over
+
+    @property
+    def must_use_pawns(self):
+        return self._must_use_pawns
+
+    @property
+    def turn(self):
+        return self._board.turn
 
     def is_possible_to_ask(self, move):
-        return move in self.possible_to_ask
+        return move in self._possible_to_ask

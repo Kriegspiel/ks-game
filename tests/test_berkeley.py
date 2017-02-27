@@ -2,22 +2,24 @@
 
 from ks_game.berkeley import chess
 from ks_game.berkeley import BerkeleyGame
-from ks_game.berkeley import MoveAnnouncement as MA
-from ks_game.berkeley import SpecialCaseAnnouncement as SCA
 
-from ks_game.ks_move import QuestionAnnouncement as QA
 from ks_game.ks_move import KriegspielMove as KSMove
+from ks_game.ks_move import QuestionAnnouncement as QA
+
+from ks_game.ks_move import KriegspielAnswer as KSAnswer
+from ks_game.ks_move import MainAnnouncement as MA
+from ks_game.ks_move import SpecialCaseAnnouncement as SCA
 
 
 def test_white_e2e4():
     g = BerkeleyGame()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4))) == (MA.REGULAR_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4))) == KSAnswer(MA.REGULAR_MOVE)
 
 
 def test_black_regular_move():
     g = BerkeleyGame()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5))) == (MA.REGULAR_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5))) == KSAnswer(MA.REGULAR_MOVE)
 
 
 def test_white_any_true():
@@ -26,7 +28,7 @@ def test_white_any_true():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.H5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
-    assert g.ask_for(KSMove(QA.ASK_ANY)) == (MA.HAS_ANY, None, None)
+    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.HAS_ANY)
 
 
 def test_black_any_true():
@@ -36,7 +38,7 @@ def test_black_any_true():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.H5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
-    assert g.ask_for(KSMove(QA.ASK_ANY)) == (MA.HAS_ANY, None, None)
+    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.HAS_ANY)
 
 
 def test_black_illegal_after_any_true():
@@ -48,7 +50,7 @@ def test_black_illegal_after_any_true():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
     g.ask_for(KSMove(QA.ASK_ANY))
     # Legal in chess, but illegal after ask 'for any'
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D8, chess.D7))) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D8, chess.D7))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_black_legal_after_any_true():
@@ -60,7 +62,7 @@ def test_black_legal_after_any_true():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
     g.ask_for(KSMove(QA.ASK_ANY))
     # Capture by pawn after ANY
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4))) == (MA.CAPTURE_DONE, chess.E4, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.E4)
 
 
 def test_white_any_false():
@@ -72,7 +74,7 @@ def test_white_any_false():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
     g.ask_for(KSMove(QA.ASK_ANY))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4)))
-    assert g.ask_for(KSMove(QA.ASK_ANY)) == (MA.NO_ANY, None, None)
+    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.NO_ANY)
 
 
 def test_white_capture_and_check():
@@ -85,7 +87,7 @@ def test_white_capture_and_check():
     g.ask_for(KSMove(QA.ASK_ANY))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4)))
     g.ask_for(KSMove(QA.ASK_ANY))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7))) == (MA.CAPTURE_DONE, chess.F7, SCA.CHECK_SHORT_DIAGONAL)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F7, special_announcement=SCA.CHECK_SHORT_DIAGONAL)
 
 
 def test_black_from_check_false():
@@ -99,7 +101,7 @@ def test_black_from_check_false():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4)))
     g.ask_for(KSMove(QA.ASK_ANY))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.E7))) == (MA.ILLEGAL_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.E7))) == KSAnswer(MA.ILLEGAL_MOVE)
 
 
 def test_black_from_check_true_and_capture():
@@ -114,7 +116,7 @@ def test_black_from_check_true_and_capture():
     g.ask_for(KSMove(QA.ASK_ANY))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G6, chess.F7)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.E7)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.F7))) == (MA.CAPTURE_DONE, chess.F7, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E8, chess.F7))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F7)
 
 
 def test_black_any_true_en_passant():
@@ -135,7 +137,7 @@ def test_black_any_true_en_passant():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F3, chess.G1)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E5, chess.E4)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F2, chess.F4)))
-    assert g.ask_for(KSMove(QA.ASK_ANY)) == (MA.HAS_ANY, None, None)
+    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.HAS_ANY)
 
 
 def test_black_capture_en_passant():
@@ -157,101 +159,101 @@ def test_black_capture_en_passant():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E5, chess.E4)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F2, chess.F4)))
     g.ask_for(KSMove(QA.ASK_ANY))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.F3))) == (MA.CAPTURE_DONE, chess.F4, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.F3))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F4)
 
 
 def test_check_short_diagonal():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A3)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.C1))) == (MA.REGULAR_MOVE, None, SCA.CHECK_SHORT_DIAGONAL)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.C1))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_SHORT_DIAGONAL)
 
 
 def test_check_file():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A3)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.A1))) == (MA.REGULAR_MOVE, None, SCA.CHECK_FILE)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.A1))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_FILE)
 
 
 def test_check_rank():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A3)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.D3))) == (MA.REGULAR_MOVE, None, SCA.CHECK_RANK)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.D3))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_RANK)
 
 
 def test_check_long_diagonal():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A3)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.D6))) == (MA.REGULAR_MOVE, None, SCA.CHECK_LONG_DIAGONAL)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.D6))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_LONG_DIAGONAL)
 
 
 def test_check_knight():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D1, chess.Piece(chess.QUEEN, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A3)))
-    g.board.set_piece_at(chess.C3, chess.Piece(chess.KNIGHT, chess.BLACK))
+    g._board.set_piece_at(chess.C3, chess.Piece(chess.KNIGHT, chess.BLACK))
     g._generate_possible_to_ask_list()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C3, chess.B5))) == (MA.REGULAR_MOVE, None, SCA.CHECK_KNIGHT)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C3, chess.B5))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_KNIGHT)
 
 
 def test_check_double():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.E2, chess.Piece(chess.QUEEN, chess.BLACK))
-    g.board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.E2, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C2, chess.B2)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C4))) == (MA.REGULAR_MOVE, None, SCA.CHECK_DOUBLE)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C4))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_DOUBLE)
 
 
 def test_promotion_check_long():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
-    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g._board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     g._generate_possible_to_ask_list()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A7, chess.A8, promotion=chess.QUEEN))) == (MA.REGULAR_MOVE, None, SCA.CHECK_LONG_DIAGONAL)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A7, chess.A8, promotion=chess.QUEEN))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_LONG_DIAGONAL)
 
 
 def test_impossible_to_promotion_without_piece_spesification():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
-    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g._board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     g._generate_possible_to_ask_list()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A7, chess.A8))) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A7, chess.A8))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_200_reversible_moves():
     g = BerkeleyGame()
-    for _ in range(49):
+    for _ in range(499):
         g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.F3)))
         g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.F6)))
         g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F3, chess.G1)))
@@ -259,7 +261,7 @@ def test_200_reversible_moves():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.F3)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.F6)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F3, chess.G1)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F6, chess.G8))) == (MA.REGULAR_MOVE, None, SCA.DRAW_TWOHUNDRED)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F6, chess.G8))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.DRAW_TOOMANYREVERSIBLEMOVES)
 
 
 def test_five_fold_is_not_draw():
@@ -284,7 +286,7 @@ def test_five_fold_is_not_draw():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.F3)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.F6)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F3, chess.G1)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F6, chess.G8))) == (MA.REGULAR_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F6, chess.G8))) == KSAnswer(MA.REGULAR_MOVE)
 
 
 def test_five_fold_then_checkmate():
@@ -317,15 +319,15 @@ def test_five_fold_then_checkmate():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B8, chess.A6)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F1, chess.C4)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A6, chess.B8)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F3, chess.F7))) == (MA.CAPTURE_DONE, chess.F7, SCA.CHECKMATE_WHITE_WINS)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F3, chess.F7))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F7, special_announcement=SCA.CHECKMATE_WHITE_WINS)
 
 
 def test_75_moves_is_not_draw():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.D4, chess.Piece(chess.PAWN, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D4, chess.Piece(chess.PAWN, chess.WHITE))
     g._generate_possible_to_ask_list()
 
     white_king_sq = chess.A1
@@ -424,60 +426,60 @@ def test_75_moves_is_not_draw():
     # 148
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C2, chess.C3)))
     # 149
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D8, chess.D7))) == (MA.REGULAR_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D8, chess.D7))) == KSAnswer(MA.REGULAR_MOVE)
 
 
 def test_stalemate():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
     g._generate_possible_to_ask_list()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A7))) == (MA.REGULAR_MOVE, None, SCA.DRAW_STALEMATE)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A7))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.DRAW_STALEMATE)
 
 
 def test_white_wins():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
-    g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.WHITE))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.WHITE))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
     g._generate_possible_to_ask_list()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A8))) == (MA.REGULAR_MOVE, None, SCA.CHECKMATE_WHITE_WINS)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A8))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECKMATE_WHITE_WINS)
 
 
 def test_black_wins():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.BLACK))
-    g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.BLACK))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
-    g.board.turn = chess.BLACK
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.BLACK))
+    g._board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
+    g._board.turn = chess.BLACK
     g._generate_possible_to_ask_list()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A8))) == (MA.REGULAR_MOVE, None, SCA.CHECKMATE_BLACK_WINS)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A8))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECKMATE_BLACK_WINS)
 
 
 def test_draw_insufficient():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.A8, chess.Piece(chess.QUEEN, chess.WHITE))
-    g.board.set_piece_at(chess.F7, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.G4, chess.Piece(chess.BISHOP, chess.WHITE))
-    g.board.set_piece_at(chess.D4, chess.Piece(chess.KING, chess.BLACK))
+    g._board.clear()
+    g._board.set_piece_at(chess.A8, chess.Piece(chess.QUEEN, chess.WHITE))
+    g._board.set_piece_at(chess.F7, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.G4, chess.Piece(chess.BISHOP, chess.WHITE))
+    g._board.set_piece_at(chess.D4, chess.Piece(chess.KING, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A8, chess.D5)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D4, chess.D5))) == (MA.CAPTURE_DONE, chess.D5, SCA.DRAW_INSUFFICIENT)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D4, chess.D5))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.D5, special_announcement=SCA.DRAW_INSUFFICIENT)
 
 
 def test_impossible_ask_move_from_empty_square():
     g = BerkeleyGame()
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E3, chess.E4))) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E3, chess.E4))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_illegal_to_castling_through_check():
@@ -490,7 +492,7 @@ def test_illegal_to_castling_through_check():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.H6)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F2, chess.F4)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B8, chess.A6)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1))) == (MA.ILLEGAL_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1))) == KSAnswer(MA.ILLEGAL_MOVE)
 
 
 def test_castling():
@@ -501,7 +503,7 @@ def test_castling():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F8, chess.C5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.H3)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.H6)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1))) == (MA.REGULAR_MOVE, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1))) == KSAnswer(MA.REGULAR_MOVE)
 
 
 def test_impossible_ask_castling_after_move():
@@ -516,7 +518,7 @@ def test_impossible_ask_castling_after_move():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F7, chess.F5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.E2)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C5, chess.F8)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1))) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_35_possibilities_in_init():
@@ -527,7 +529,7 @@ def test_35_possibilities_in_init():
 def test_ask_for_any_only_once():
     g = BerkeleyGame()
     g.ask_for(KSMove(QA.ASK_ANY))
-    assert g.ask_for(KSMove(QA.ASK_ANY)) == (MA.IMPOSSIBLE_TO_ASK, None, None)
+    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_impossible_ask_nonpawnmoves_after_askany():
@@ -545,33 +547,33 @@ def test_always_possible_to_ask_any():
 
 def test_possible_capture_with_promotion():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
-    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g._board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     g._generate_possible_to_ask_list()
     assert KSMove(QA.COMMON, chess.Move(chess.A7, chess.B8, promotion=chess.BISHOP)) in g.possible_to_ask
 
 
 def test_12_possibilities_with_pawn_capture_and_promotion():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
-    g.board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.clear()
+    g._board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g._board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     g._generate_possible_to_ask_list()
     assert len(g.possible_to_ask) == 12
 
 
 def test_no_legal_moves_after_gameover():
     g = BerkeleyGame()
-    g.board.clear()
-    g.board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.BLACK))
-    g.board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
-    g.board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.BLACK))
-    g.board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.BLACK))
-    g.board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
-    g.board.turn = chess.BLACK
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.BLACK))
+    g._board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
+    g._board.turn = chess.BLACK
     g._generate_possible_to_ask_list()
     # Checkmate
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A8)))
