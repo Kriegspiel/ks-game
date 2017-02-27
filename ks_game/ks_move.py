@@ -25,7 +25,7 @@ class KriegspielMove(object):
         self.chess_move = chess_move
 
     def __str__(self):
-        return '<{QA}, uci={chess_move}>'.format(
+        return '<KriegspielMove: {QA}, uci={chess_move}>'.format(
             QA=self.question_type,
             chess_move=self.chess_move
         )
@@ -69,6 +69,12 @@ class MainAnnouncement(enum.Enum):
     NO_ANY = 5  #enum.auto()
 
 
+MOVE_DONE = [
+    MainAnnouncement.REGULAR_MOVE,
+    MainAnnouncement.CAPTURE_DONE
+]
+
+
 @enum.unique
 class SpecialCaseAnnouncement(enum.Enum):
     '''docstring for SpecialCaseAnnouncement'''
@@ -100,6 +106,7 @@ class KriegspielAnswer(object):
         self.main_announcement = main_announcement
         self.capture_at_square = None
         self.special_announcement = SpecialCaseAnnouncement.NONE
+        self.move_done = False
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             if not isinstance(kwargs.get('capture_at_square'), int):
@@ -113,6 +120,9 @@ class KriegspielAnswer(object):
                 # else:
                 raise TypeError
             self.special_announcement = kwargs.get('special_announcement')
+
+        if self.main_announcement in MOVE_DONE:
+            self.move_done = True
 
     def __str__(self):
         capture_at = None

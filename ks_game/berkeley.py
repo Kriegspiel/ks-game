@@ -26,12 +26,31 @@ class BerkeleyGame(object):
         self._generate_possible_to_ask_list()
 
     def ask_for(self, move):
-        '''
-        return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
-        '''
         if not isinstance(move, KSMove):
             raise TypeError
 
+        result = self._ask_for(move)
+        # Regenerate possbile to ask list if move is done
+        if result.move_done:
+            self._generate_possible_to_ask_list()
+        # Remove non-pawn-captures is there is any pawn captures
+        if result.main_announcement == MA.HAS_ANY:
+            self._possible_to_ask = list(
+                        set(self._possible_to_ask) -
+                    (set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
+            )
+        # Remove pawn captures is there is no pawn captures
+        if result.main_announcement == MA.NO_ANY:
+            self._possible_to_ask = list(set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
+        # Possible to ask about a move only once
+        if result.main_announcement == MA.ILLEGAL_MOVE:
+            self._possible_to_ask.remove(move)
+        return result
+
+    def _ask_for(self, move):
+        '''
+        return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
+        '''
         if move not in self._possible_to_ask:
             return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
@@ -66,7 +85,6 @@ class BerkeleyGame(object):
             self._possible_to_ask.remove(KSMove(QA.ASK_ANY))
             if self._has_any_pawn_captures():
                 self._must_use_pawns = True
-                self._generate_possible_to_ask_list()
                 return KSAnswer(MA.HAS_ANY)
             else:
                 return KSAnswer(MA.NO_ANY)
@@ -138,7 +156,7 @@ class BerkeleyGame(object):
 
         if self.is_game_over():
             self._game_over = True
-            self._generate_possible_to_ask_list()
+            # self._generate_possible_to_ask_list()
             if self._board.is_stalemate():
                 return SCA.DRAW_STALEMATE
             if self._board.is_insufficient_material():
@@ -205,28 +223,17 @@ class BerkeleyGame(object):
     def _is_legal_move(self, move):
         return move in self._board.legal_moves
 
-    def _generate_possible_to_ask_list(self):
-        # Very slow. :(
-        if self._game_over:
-            self._possible_to_ask = list()
-            return
-        # Make a board that current player see
+    def _prepare_players_board(self):
         players_board = self._board.copy()
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:
                 if players_board.piece_at(square).color is not self._board.turn:
                     players_board.remove_piece_at(square)
-        # Now players_board is equal to board that current player see
+        return players_board
+
+    def _generate_posible_pawn_captures(self):
+        players_board = self._prepare_players_board()
         possibilities = list()
-        # First collect all possible moves keeping in mind castling rules
-        if not self._must_use_pawns:
-            possibilities.extend([
-                KSMove(QA.COMMON, chess_move)
-                for chess_move in players_board.legal_moves
-            ])
-            # Always possible to ask ANY?
-            possibilities.append(KSMove(QA.ASK_ANY))
-        # Second add possible pawn captures
         for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
             for attacked in list(players_board.attacks(square)):
                 if players_board.piece_at(attacked) is None:
@@ -241,6 +248,26 @@ class BerkeleyGame(object):
                     else:
                         # If capture is not promotion for pawn
                         possibilities.append(KSMove(QA.COMMON, chess.Move(square, attacked)))
+        return possibilities
+
+    def _generate_possible_to_ask_list(self):
+        # Very slow. :(
+        if self._game_over:
+            self._possible_to_ask = list()
+            return
+        # Make a board that current player see
+        players_board = self._prepare_players_board()
+        # Now players_board is equal to board that current player see
+        possibilities = list()
+        # First collect all possible moves keeping in mind castling rules
+        possibilities.extend([
+            KSMove(QA.COMMON, chess_move)
+            for chess_move in players_board.legal_moves
+        ])
+        # Always possible to ask ANY?
+        possibilities.append(KSMove(QA.ASK_ANY))
+        # Second add possible pawn captures
+        possibilities.extend(self._generate_posible_pawn_captures())
         # And remove finally — remove duplicates
         self._possible_to_ask = list(set(possibilities))
 

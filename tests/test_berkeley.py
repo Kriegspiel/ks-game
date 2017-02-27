@@ -578,3 +578,30 @@ def test_no_legal_moves_after_gameover():
     # Checkmate
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A8)))
     assert len(g.possible_to_ask) == 0
+
+
+def test_ask_same_twice():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.F3)))
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.F3))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+
+
+def test_no_possible_pawn_capture_after_false_any():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.ASK_ANY))
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.F3))) not in g.possible_to_ask
+
+
+def test_was_illegal_and_not_possible_after_any():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.H5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
+    g.ask_for(KSMove(QA.ASK_ANY))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D5, chess.E4)))
+    illegal_move = KSMove(QA.COMMON, chess.Move(chess.G6, chess.G8))
+    g.ask_for(illegal_move)
+    g.ask_for(KSMove(QA.ASK_ANY))
+    assert g.ask_for(illegal_move) not in g.possible_to_ask
