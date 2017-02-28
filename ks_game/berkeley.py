@@ -28,7 +28,6 @@ class BerkeleyGame(object):
     def ask_for(self, move):
         if not isinstance(move, KSMove):
             raise TypeError
-
         result = self._ask_for(move)
         # Regenerate possbile to ask list if move is done
         if result.move_done:
@@ -43,7 +42,8 @@ class BerkeleyGame(object):
         if result.main_announcement == MA.NO_ANY:
             self._possible_to_ask = list(set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
         # Possible to ask about a move only once
-        if result.main_announcement == MA.ILLEGAL_MOVE:
+        if result.main_announcement in (MA.ILLEGAL_MOVE, MA.NO_ANY):
+            # For `has any` already deleted
             self._possible_to_ask.remove(move)
         return result
 
@@ -51,7 +51,7 @@ class BerkeleyGame(object):
         '''
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         '''
-        if move not in self._possible_to_ask:
+        if move not in self.possible_to_ask:
             return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
         if move.question_type == QA.COMMON:
@@ -82,7 +82,6 @@ class BerkeleyGame(object):
         elif move.question_type == QA.ASK_ANY:
             # Any Rule. Asking for any available pawn captures.
             # Possible to ask once a turn
-            self._possible_to_ask.remove(KSMove(QA.ASK_ANY))
             if self._has_any_pawn_captures():
                 self._must_use_pawns = True
                 return KSAnswer(MA.HAS_ANY)
@@ -113,23 +112,19 @@ class BerkeleyGame(object):
         def same_rank(from_sq, to_sq):
             # Or same row
             return chess.rank_index(from_sq) == chess.rank_index(to_sq)
-
         def same_file(from_sq, to_sq):
             # Or same column
             return chess.file_index(from_sq) == chess.file_index(to_sq)
-
         def sw_ne_diagonal(from_sq, to_sq):
             # Or on one lower-left upper-right diagonal
             # Parallel to A1H8
             return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
                     (chess.file_index(from_sq) - chess.file_index(to_sq)))
-
         def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
             # Parallel to A8H1
             return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
                     -(chess.file_index(from_sq) - chess.file_index(to_sq)))
-
         def is_short_diagonal(from_sq, to_sq):
             '''
             return True is diagonal is short
@@ -153,10 +148,22 @@ class BerkeleyGame(object):
                     return True
                 else:
                     raise KeyError
+        def kind_of_check(attacker_square, king_square):
+            if same_file(attacker_square, king_square):
+                return SCA.CHECK_FILE
+            elif same_rank(attacker_square, king_square):
+                return SCA.CHECK_RANK
+            elif (sw_ne_diagonal(attacker_square, king_square) or
+                  nw_se_diagonal(attacker_square, king_square)):
+                if is_short_diagonal(attacker_square, king_square):
+                    return SCA.CHECK_SHORT_DIAGONAL
+                else:
+                    return SCA.CHECK_LONG_DIAGONAL
+            else:
+                return SCA.CHECK_KNIGHT
 
         if self.is_game_over():
             self._game_over = True
-            # self._generate_possible_to_ask_list()
             if self._board.is_stalemate():
                 return SCA.DRAW_STALEMATE
             if self._board.is_insufficient_material():
@@ -174,22 +181,13 @@ class BerkeleyGame(object):
             king_square = sq.pop()
             attackers = self._board.attackers(not self._board.turn, king_square)
             attackers_squares = list(attackers)
-            if len(attackers_squares) > 1:
-                return SCA.CHECK_DOUBLE
+            if len(attackers_squares) == 2:
+                first = kind_of_check(attackers_squares[0], king_square)
+                second = kind_of_check(attackers_squares[1], king_square)
+                return SCA.CHECK_DOUBLE, [first, second]
             elif len(attackers_squares) == 1:
                 attacker_square = attackers_squares[0]
-                if same_file(attacker_square, king_square):
-                    return SCA.CHECK_FILE
-                elif same_rank(attacker_square, king_square):
-                    return SCA.CHECK_RANK
-                elif (sw_ne_diagonal(attacker_square, king_square) or
-                      nw_se_diagonal(attacker_square, king_square)):
-                    if is_short_diagonal(attacker_square, king_square):
-                        return SCA.CHECK_SHORT_DIAGONAL
-                    else:
-                        return SCA.CHECK_LONG_DIAGONAL
-                else:
-                    return SCA.CHECK_KNIGHT
+                return kind_of_check(attacker_square, king_square)
             else:
                 raise RuntimeError
         return SCA.NONE
@@ -209,7 +207,6 @@ class BerkeleyGame(object):
         if self._board.is_capture(move):
             captured_square = self._get_captured_square(move)
         self._board.push(move)
-        self._generate_possible_to_ask_list()
         return captured_square
 
     def _has_any_pawn_captures(self):
@@ -224,19 +221,18 @@ class BerkeleyGame(object):
         return move in self._board.legal_moves
 
     def _prepare_players_board(self):
-        players_board = self._board.copy()
+        players_board = self._board.copy(stack=False)
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:
                 if players_board.piece_at(square).color is not self._board.turn:
                     players_board.remove_piece_at(square)
-        return players_board
+        self._players_board = players_board
 
     def _generate_posible_pawn_captures(self):
-        players_board = self._prepare_players_board()
         possibilities = list()
         for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
-            for attacked in list(players_board.attacks(square)):
-                if players_board.piece_at(attacked) is None:
+            for attacked in list(self._players_board.attacks(square)):
+                if self._players_board.piece_at(attacked) is None:
                     if chess.rank_index(attacked) in (0, 7):
                         # If capture is promotion for pawn.
                         possibilities.extend([
@@ -256,13 +252,13 @@ class BerkeleyGame(object):
             self._possible_to_ask = list()
             return
         # Make a board that current player see
-        players_board = self._prepare_players_board()
+        self._prepare_players_board()
         # Now players_board is equal to board that current player see
         possibilities = list()
         # First collect all possible moves keeping in mind castling rules
         possibilities.extend([
             KSMove(QA.COMMON, chess_move)
-            for chess_move in players_board.legal_moves
+            for chess_move in self._players_board.legal_moves
         ])
         # Always possible to ask ANY?
         possibilities.append(KSMove(QA.ASK_ANY))
@@ -288,4 +284,4 @@ class BerkeleyGame(object):
         return self._board.turn
 
     def is_possible_to_ask(self, move):
-        return move in self._possible_to_ask
+        return move in self.possible_to_ask

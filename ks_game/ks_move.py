@@ -25,7 +25,7 @@ class KriegspielMove(object):
         self.chess_move = chess_move
 
     def __str__(self):
-        return '<KriegspielMove: {QA}, uci={chess_move}>'.format(
+        return '<KriegspielMove: {QA}, move={chess_move}>'.format(
             QA=self.question_type,
             chess_move=self.chess_move
         )
@@ -103,35 +103,83 @@ class KriegspielAnswer(object):
         if not isinstance(main_announcement, MainAnnouncement):
             raise TypeError
 
-        self.main_announcement = main_announcement
-        self.capture_at_square = None
-        self.special_announcement = SpecialCaseAnnouncement.NONE
-        self.move_done = False
+        self._main_announcement = main_announcement
+        self._capture_at_square = None
+        self._special_announcement = SpecialCaseAnnouncement.NONE
+        self._move_done = False
+        self._check_1 = None
+        self._check_2 = None
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             if not isinstance(kwargs.get('capture_at_square'), int):
                 raise TypeError
-            self.capture_at_square = kwargs.get('capture_at_square')
+            self._capture_at_square = kwargs['capture_at_square']
 
         if 'special_announcement' in kwargs:
-            if not isinstance(kwargs.get('special_announcement'), SpecialCaseAnnouncement):
-                # if kwargs.get('special_announcement') is None:
-                #     self.special_announcement = SpecialCaseAnnouncement.None
-                # else:
+            sca = kwargs['special_announcement']
+            if isinstance(sca, SpecialCaseAnnouncement):
+                self._special_announcement = sca
+            elif isinstance(sca, tuple):
+                if sca[0] == SpecialCaseAnnouncement.CHECK_DOUBLE:
+                    self._special_announcement = SpecialCaseAnnouncement.CHECK_DOUBLE
+                    for check in sca[1]:
+                        if not isinstance(check, SpecialCaseAnnouncement):
+                            raise TypeError
+                    self._check_1 = sca[1][0]
+                    self._check_2 = sca[1][1]
+                else:
+                    raise TypeError
+            else:
                 raise TypeError
-            self.special_announcement = kwargs.get('special_announcement')
 
-        if self.main_announcement in MOVE_DONE:
-            self.move_done = True
+        if self._main_announcement in MOVE_DONE:
+            self._move_done = True
+
+    @property
+    def main_announcement(self):
+        return self._main_announcement
+
+    @property
+    def capture_at_square(self):
+        return self._capture_at_square
+
+    @property
+    def special_announcement(self):
+        return self._special_announcement
+
+    @property
+    def move_done(self):
+        return self._move_done
+
+    @property
+    def check_1(self):
+        return self._check_1
+
+    @property
+    def check_2(self):
+        return self._check_2
 
     def __str__(self):
         capture_at = None
-        if isinstance(self.capture_at_square, int):
-            capture_at = chess.SQUARE_NAMES[self.capture_at_square]
-        return '<KriegspielAnswer: {MA}, capture_at={CA}, special_case={SC}>'.format(
-            MA=self.main_announcement,
-            CA=capture_at,
-            SC=self.special_announcement
+        if isinstance(self._capture_at_square, int):
+            capture_at = chess.SQUARE_NAMES[self._capture_at_square]
+
+        main_data = [
+            'capture_at={CA}'.format(CA=capture_at),
+            'special_case={SC}'.format(SC=self._special_announcement)
+        ]
+
+        if self._check_1 is not None or self._check_2 is not None:
+            extra_data = 'check_1={c1}, check_2={c2}'.format(
+                c1=self._check_1,
+                c2=self._check_2
+            )
+            main_data.append(extra_data)
+
+        main_data = ', '.join(main_data)
+        return '<KriegspielAnswer: {MA}, {data}>'.format(
+            MA=self._main_announcement,
+            data=main_data
         )
 
     def __repr__(self):
@@ -140,9 +188,9 @@ class KriegspielAnswer(object):
     def __eq__(self, other):
         if not isinstance(other, KriegspielAnswer):
             return False
-        if (self.main_announcement == other.main_announcement and
-                self.capture_at_square == other.capture_at_square and
-                self.special_announcement == other.special_announcement):
+        if (self._main_announcement == other._main_announcement and
+                self._capture_at_square == other._capture_at_square and
+                self._special_announcement == other._special_announcement):
             return True
         else:
             return False
@@ -151,13 +199,13 @@ class KriegspielAnswer(object):
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        if self.main_announcement.value < other.main_announcement.value:
+        if self._main_announcement.value < other._main_announcement.value:
             return True
-        if self.main_announcement.value == other.main_announcement.value:
-            if self.capture_at_square < other.capture_at_square:
+        if self._main_announcement.value == other._main_announcement.value:
+            if self._capture_at_square < other._capture_at_square:
                 return True
-            if self.capture_at_square == other.capture_at_square:
-                if self.special_announcement.value < other.special_announcement.value:
+            if self._capture_at_square == other._capture_at_square:
+                if self._special_announcement.value < other._special_announcement.value:
                     return True
         return False
 
