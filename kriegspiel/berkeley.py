@@ -4,12 +4,12 @@ import enum
 
 import chess
 
-from ks_game.ks_move import KriegspielMove as KSMove
-from ks_game.ks_move import QuestionAnnouncement as QA
+from kriegspiel.move import KriegspielMove as KSMove
+from kriegspiel.move import QuestionAnnouncement as QA
 
-from ks_game.ks_move import KriegspielAnswer as KSAnswer
-from ks_game.ks_move import MainAnnouncement as MA
-from ks_game.ks_move import SpecialCaseAnnouncement as SCA
+from kriegspiel.move import KriegspielAnswer as KSAnswer
+from kriegspiel.move import MainAnnouncement as MA
+from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 
 HALFMOVE_CLOCK_LIMIT = 2000

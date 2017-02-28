@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from ks_game.berkeley import chess
-from ks_game.berkeley import BerkeleyGame
+from kriegspiel.berkeley import chess
+from kriegspiel.berkeley import BerkeleyGame
 
-from ks_game.ks_move import KriegspielMove as KSMove
-from ks_game.ks_move import QuestionAnnouncement as QA
+from kriegspiel.move import KriegspielMove as KSMove
+from kriegspiel.move import QuestionAnnouncement as QA
 
-from ks_game.ks_move import KriegspielAnswer as KSAnswer
-from ks_game.ks_move import MainAnnouncement as MA
-from ks_game.ks_move import SpecialCaseAnnouncement as SCA
+from kriegspiel.move import KriegspielAnswer as KSAnswer
+from kriegspiel.move import MainAnnouncement as MA
+from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 
 def test_white_e2e4():
@@ -634,7 +634,7 @@ def test_was_illegal_and_not_possible_after_any():
     g.ask_for(KSMove(QA.ASK_ANY))
     assert g.ask_for(illegal_move) not in g.possible_to_ask
 
-def test_impossible_ask_any_twice():
+def test_impossible_ask_same_move_twice():
     g = BerkeleyGame()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))

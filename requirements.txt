@@ -1,1 +1,2 @@
 python-chess[uci,gaviota]
+pytest
