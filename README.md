@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/Kriegspiel/ks-game.svg?branch=master)](https://travis-ci.org/Kriegspiel/ks-game)
 [![PyPI version](https://badge.fury.io/py/kriegspiel.svg)](https://badge.fury.io/py/kriegspiel)
-
+[![Coverage Status](https://coveralls.io/repos/github/Kriegspiel/ks-game/badge.svg?branch=master)](https://coveralls.io/github/Kriegspiel/ks-game?branch=master)
 
 Supported Kriegspiel rules:
 
