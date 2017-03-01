@@ -2,19 +2,13 @@
 
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
-# To use a consistent encoding
-from codecs import open
-from os import path
+
+import pypandoc
 
 import kriegspiel
 
 
-here = path.abspath(path.dirname(__file__))
-
-
-# Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+long_description = pypandoc.convert('README.md', 'rst')
 
 
 setup(

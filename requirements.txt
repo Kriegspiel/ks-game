@@ -2,4 +2,4 @@ wheel
 python-chess[uci,gaviota]
 pytest
 twine
-
+pypandoc
