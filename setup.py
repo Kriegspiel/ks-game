@@ -6,6 +6,8 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
+import kriegspiel
+
 
 here = path.abspath(path.dirname(__file__))
 
@@ -21,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.2.0',
+    version=kriegspiel.__version__,
 
     description='Python Kriegspiel Game',
     long_description=long_description,
@@ -30,8 +32,8 @@ setup(
     url='https://github.com/Kriegspiel/ks-game',
 
     # Author details
-    author='kriegspiel.org developers',
-    author_email='dev@kriegspiel.org',
+    author=kriegspiel.__author__,
+    author_email=kriegspiel.__email__,
 
     # Choose your license
     license='MIT',
@@ -42,7 +44,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         # Indicate who your project is intended for
         'Intended Audience :: Science/Research',
@@ -78,10 +80,10 @@ setup(
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-    extras_require={
-        # 'dev': ['check-manifest'],
-        'test': ['pytest'],
-    },
+    # extras_require={
+    #     # 'dev': ['check-manifest'],
+    #     'test': ['pytest'],
+    # },
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
