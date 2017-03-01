@@ -11,4 +11,6 @@ install:
 # command to run tests
 script: py.test
 after_success:
-  - coveralls
+    - if [[ $ENV == python=3.6* ]]; then
+        coveralls;
+      fi
