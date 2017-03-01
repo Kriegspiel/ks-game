@@ -7,8 +7,10 @@ install:
   - pip install -r requirements.txt
   - pip install pytest-cov
   - pip install -e .
-  - pip install coveralls
+  - pip install coverage 
 # command to run tests
 script: py.test
 after_success:
-  - coveralls
+    - if [[ $ENV == python=3.6* ]]; then
+        codecov;
+      fi
