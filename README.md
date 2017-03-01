@@ -1,5 +1,7 @@
 # Python Kriegspiel Game
 
+[![Build Status](https://travis-ci.org/Kriegspiel/ks-game.svg?branch=master)](https://travis-ci.org/Kriegspiel/ks-game)
+
 Supported Kriegspiel rules:
 
 1. Berkeley + Public Any
