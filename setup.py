@@ -3,12 +3,14 @@
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
 
-import pypandoc
-
 import kriegspiel
 
 
-long_description = pypandoc.convert('README.md', 'rst')
+try:
+    import pypandoc
+    long_description = pypandoc.convert('README.md', 'rst')
+except(IOError, ImportError):
+    long_description = open('README.md').read()
 
 
 setup(
