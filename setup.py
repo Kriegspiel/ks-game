@@ -10,6 +10,7 @@ try:
     import pypandoc
     long_description = pypandoc.convert('README.md', 'rst')
 except(IOError, ImportError):
+    print('Please install pandoc! sudo apt-get install pandoc')
     long_description = open('README.md').read()
 
 

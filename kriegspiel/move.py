@@ -46,12 +46,7 @@ class KriegspielMove(object):
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        if self.question_type.value < other.question_type.value:
-            return True
-        if self.question_type.value == other.question_type.value:
-            if self.chess_move.uci() < other.chess_move.uci():
-                return True
-        return False
+        return self.__str__() < other.__str__()
 
     def __hash__(self):
         return hash(self.__str__())
@@ -95,6 +90,15 @@ class SpecialCaseAnnouncement(enum.Enum):
     CHECK_DOUBLE = 11  #enum.auto()
 
 
+SINGLE_CHECK = [
+    SpecialCaseAnnouncement.CHECK_RANK,
+    SpecialCaseAnnouncement.CHECK_FILE,
+    SpecialCaseAnnouncement.CHECK_LONG_DIAGONAL,
+    SpecialCaseAnnouncement.CHECK_SHORT_DIAGONAL,
+    SpecialCaseAnnouncement.CHECK_KNIGHT
+]
+
+
 class KriegspielAnswer(object):
     '''docstring for KriegdpielMove'''
     def __init__(self, main_announcement, **kwargs):
@@ -123,7 +127,7 @@ class KriegspielAnswer(object):
                 if sca[0] == SpecialCaseAnnouncement.CHECK_DOUBLE:
                     self._special_announcement = SpecialCaseAnnouncement.CHECK_DOUBLE
                     for check in sca[1]:
-                        if not isinstance(check, SpecialCaseAnnouncement):
+                        if not check in SINGLE_CHECK:
                             raise TypeError
                     self._check_1 = sca[1][0]
                     self._check_2 = sca[1][1]
@@ -186,28 +190,13 @@ class KriegspielAnswer(object):
         return self.__str__()
 
     def __eq__(self, other):
-        if not isinstance(other, KriegspielAnswer):
-            return False
-        if (self._main_announcement == other._main_announcement and
-                self._capture_at_square == other._capture_at_square and
-                self._special_announcement == other._special_announcement):
-            return True
-        else:
-            return False
+        return self.__str__() == other.__str__()
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __lt__(self, other):
-        if self._main_announcement.value < other._main_announcement.value:
-            return True
-        if self._main_announcement.value == other._main_announcement.value:
-            if self._capture_at_square < other._capture_at_square:
-                return True
-            if self._capture_at_square == other._capture_at_square:
-                if self._special_announcement.value < other._special_announcement.value:
-                    return True
-        return False
+        return self.__str__() < other.__str__()
 
     def __hash__(self):
         return hash(self.__str__())
