@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import pytest
+
 from kriegspiel.berkeley import chess
 from kriegspiel.berkeley import BerkeleyGame
 
@@ -160,6 +162,15 @@ def test_black_capture_en_passant():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F2, chess.F4)))
     g.ask_for(KSMove(QA.ASK_ANY))
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.F3))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F4)
+
+
+def test_white_capture_en_passant():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.H6)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.E5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F7, chess.F5)))
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E5, chess.F6))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F5)
 
 
 def test_check_short_diagonal():
@@ -647,3 +658,88 @@ def test_impossible_ask_same_move_twice():
     g.ask_for(illegal_move)
     g.ask_for(KSMove(QA.ASK_ANY))
     assert g.ask_for(illegal_move) not in g.possible_to_ask
+
+
+@pytest.mark.parametrize('what, result', [
+    (KSMove(QA.ASK_ANY), True),
+    (KSMove(QA.COMMON, chess.Move(chess.E2, chess.E1)), False)
+])
+def test_possible_to_ask(what, result):
+    g = BerkeleyGame()
+    assert g.is_possible_to_ask(what) == result
+
+
+def test_initial_game_is_not_over():
+    g = BerkeleyGame()
+    assert g.game_over == False
+
+
+def test_mate_is_game_over():
+    g = BerkeleyGame()
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._generate_possible_to_ask_list()
+    # Stalemate
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A7)))
+    assert g.game_over == True
+
+
+def test_may_not_use_pawns_at_initial_state():
+    g = BerkeleyGame()
+    assert g.must_use_pawns == False
+
+
+def test_must_use_pawns_after_positive_ask_any():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.H5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
+    g.ask_for(KSMove(QA.ASK_ANY))
+    assert g.must_use_pawns == True
+
+
+def test_check_short_diagonal_upper_left_quadrant():
+    g = BerkeleyGame()
+    g._board.clear()
+    g._board.set_piece_at(chess.B8, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.B7, chess.Piece(chess.QUEEN, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.QUEEN, chess.BLACK))
+    g._board.turn = chess.BLACK
+    g._generate_possible_to_ask_list()
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.A7))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_SHORT_DIAGONAL)
+
+
+def test_promotion_capture_check():
+    g = BerkeleyGame()
+    g._board.clear()
+    g._board.set_piece_at(chess.B8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.PAWN, chess.BLACK))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.QUEEN, chess.WHITE))
+    g._board.turn = chess.BLACK
+    g._generate_possible_to_ask_list()
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A1, promotion=chess.QUEEN))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.A1, special_announcement=SCA.CHECK_LONG_DIAGONAL)
+
+
+def test_promotion_capture_draw():
+    g = BerkeleyGame()
+    g._board.clear()
+    g._board.set_piece_at(chess.B8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.B2, chess.Piece(chess.PAWN, chess.BLACK))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.QUEEN, chess.WHITE))
+    g._board.turn = chess.BLACK
+    g._generate_possible_to_ask_list()
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.B2, chess.A1, promotion=chess.BISHOP))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.A1, special_announcement=SCA.DRAW_INSUFFICIENT)
+
+
+def test_ask_for_bad_type():
+    g = BerkeleyGame()
+    with pytest.raises(TypeError):
+        g.ask_for('Not a KSMove.')

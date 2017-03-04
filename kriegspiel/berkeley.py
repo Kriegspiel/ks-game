@@ -58,12 +58,6 @@ class BerkeleyGame(object):
             # Player asks about common move
             if self._is_legal_move(move.chess_move):
                 # Move is legal in normal chess
-                if not self._check_if_must_use_pawns_rule(move.chess_move):
-                    # Move is illigal, because player have asked
-                    # about any possible pawn captures and there
-                    # are some pawn captures, but now tries to
-                    # play another piece.
-                    return KSAnswer(MA.ILLEGAL_MOVE)
                 # Perform normal move
                 captured_square = self._make_move(move.chess_move)
                 special_case = self._check_special_cases()
@@ -87,8 +81,6 @@ class BerkeleyGame(object):
                 return KSAnswer(MA.HAS_ANY)
             else:
                 return KSAnswer(MA.NO_ANY)
-        else:
-            raise TypeError
 
     def _check_if_must_use_pawns_rule(self, move):
         if self._must_use_pawns:

@@ -7,6 +7,7 @@ import chess
 
 @enum.unique
 class QuestionAnnouncement(enum.Enum):
+    NONE = 0
     COMMON = 1
     ASK_ANY = 2
 
