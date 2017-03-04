@@ -69,9 +69,9 @@ def test_SCA_not_tuple_or_SCA():
 
 def test_captue_at_square():
     a = KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.E2)
-    assert KSAnswer.capture_at_square == chess.E2
+    assert a.capture_at_square == chess.E2
 
 
-def test_captue_at_square():
+def test_special_annoucement():
     a = KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_RANK)
-    assert KSAnswer.special_announcement == SCA.CHECK_RANK
+    assert a.special_announcement == SCA.CHECK_RANK
