@@ -761,3 +761,8 @@ def test_ask_for_bad_type():
 def test_white_starts():
     g = BerkeleyGame()
     assert g.turn == chess.WHITE
+
+
+def test_if_berkeley_wo_any():
+    g = BerkeleyGame(any_rule=False)
+    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)

@@ -6,15 +6,21 @@
 
 Supported Kriegspiel rules:
 
-1. Berkeley + Public Any
+1. Berkeley
+2. Berkeley + Any
 
 In plan:
 
-1. Pure Berkeley
-2. Crazykrieg
+1. Crazykrieg
+2. Crazykrieg + Any
 
 
 ### How-to
+
+Install
+``` bash
+pip install kriegspiel
+```
 
 Run tests
 ``` bash

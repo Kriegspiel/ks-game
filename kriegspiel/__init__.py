@@ -4,4 +4,4 @@ __author__ = 'Alexander Filatov'
 
 __email__ = 'alexander@kriegspiel.org'
 
-__version__ = '0.9.0b7'
+__version__ = '1.0.0rc1'

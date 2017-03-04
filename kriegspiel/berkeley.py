@@ -16,10 +16,11 @@ HALFMOVE_CLOCK_LIMIT = 2000
 
 
 class BerkeleyGame(object):
-    '''docstring for BerkeleyGame'''
+    '''If any_rule = True – means Berkeley + Any'''
 
-    def __init__(self):
+    def __init__(self, any_rule=True):
         super(BerkeleyGame).__init__()
+        self._any_rule = any_rule
         self._board = chess.Board()
         self._must_use_pawns = False
         self._game_over = False
@@ -245,8 +246,9 @@ class BerkeleyGame(object):
             KSMove(QA.COMMON, chess_move)
             for chess_move in self._players_board.legal_moves
         ])
-        # Always possible to ask ANY?
-        possibilities.append(KSMove(QA.ASK_ANY))
+        if self._any_rule:
+            # Always possible to ask ANY?
+            possibilities.append(KSMove(QA.ASK_ANY))
         # Second add possible pawn captures
         possibilities.extend(self._generate_posible_pawn_captures())
         # And remove finally — remove duplicates
