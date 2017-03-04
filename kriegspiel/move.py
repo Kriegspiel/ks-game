@@ -193,11 +193,11 @@ class KriegspielAnswer(object):
     def __eq__(self, other):
         return self.__str__() == other.__str__()
 
-    def __ne__(self, other):
+    def __ne__(self, other):  # pragma: no cover
         return not self.__eq__(other)
 
-    def __lt__(self, other):
+    def __lt__(self, other):  # pragma: no cover
         return self.__str__() < other.__str__()
 
-    def __hash__(self):
+    def __hash__(self):  # pragma: no cover
         return hash(self.__str__())

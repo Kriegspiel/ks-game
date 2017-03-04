@@ -124,7 +124,7 @@ class BerkeleyGame(object):
                     return True
                 elif sw_ne_diagonal(from_sq, to_sq):
                     return False
-                else:
+                else:  # pragma: no cover
                     raise KeyError
             else:
                 # Other two quadrants. And diagonals are vise-versa.
@@ -132,7 +132,7 @@ class BerkeleyGame(object):
                     return False
                 elif sw_ne_diagonal(from_sq, to_sq):
                     return True
-                else:
+                else:  # pragma: no cover
                     raise KeyError
         def kind_of_check(attacker_square, king_square):
             if same_file(attacker_square, king_square):
@@ -174,7 +174,7 @@ class BerkeleyGame(object):
             elif len(attackers_squares) == 1:
                 attacker_square = attackers_squares[0]
                 return kind_of_check(attacker_square, king_square)
-            else:
+            else:  # pragma: no cover
                 raise RuntimeError
         return SCA.NONE
 
