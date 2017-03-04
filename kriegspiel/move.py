@@ -181,10 +181,9 @@ class KriegspielAnswer(object):
             )
             main_data.append(extra_data)
 
-        main_data = ', '.join(main_data)
         return '<KriegspielAnswer: {MA}, {data}>'.format(
             MA=self._main_announcement,
-            data=main_data
+            data=', '.join(main_data)
         )
 
     def __repr__(self):
@@ -193,11 +192,11 @@ class KriegspielAnswer(object):
     def __eq__(self, other):
         return self.__str__() == other.__str__()
 
-    def __ne__(self, other):  # pragma: no cover
+    def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __lt__(self, other):  # pragma: no cover
+    def __lt__(self, other):
         return self.__str__() < other.__str__()
 
-    def __hash__(self):  # pragma: no cover
+    def __hash__(self):
         return hash(self.__str__())
