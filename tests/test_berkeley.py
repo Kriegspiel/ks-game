@@ -228,7 +228,7 @@ def test_check_double():
     g._board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
     g._generate_possible_to_ask_list()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C2, chess.B2)))
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C4))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_DOUBLE)
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C4))) == KSAnswer(MA.REGULAR_MOVE, special_announcement=(SCA.CHECK_DOUBLE, [SCA.CHECK_RANK, SCA.CHECK_KNIGHT]))
 
 
 def test_check_double_check_1():
