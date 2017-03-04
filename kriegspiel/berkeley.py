@@ -82,21 +82,14 @@ class BerkeleyGame(object):
             else:
                 return KSAnswer(MA.NO_ANY)
 
-    def _check_if_must_use_pawns_rule(self, move):
-        if self._must_use_pawns:
-            return self._board.piece_type_at(move.from_square) == chess.PAWN
-        return True
-
     def is_game_over(self):
         if self._game_over:
             return True
-        if self._board.is_stalemate():
-            return True
-        if self._board.is_insufficient_material():
-            return True
-        if self._board.is_checkmate():
-            return True
-        if self._board.halfmove_clock == HALFMOVE_CLOCK_LIMIT:
+        if (self._board.is_stalemate() or
+                self._board.is_insufficient_material() or
+                self._board.is_checkmate() or
+                self._board.halfmove_clock == HALFMOVE_CLOCK_LIMIT):
+            self._game_over = True
             return True
         return False
 

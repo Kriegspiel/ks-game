@@ -687,6 +687,19 @@ def test_mate_is_game_over():
     assert g.game_over == True
 
 
+def test_mate_is_game_over_2():
+    g = BerkeleyGame()
+    g._board.clear()
+    g._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.G1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    g._generate_possible_to_ask_list()
+    # Stalemate
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A7)))
+    assert g.is_game_over() == True
+
+
 def test_may_not_use_pawns_at_initial_state():
     g = BerkeleyGame()
     assert g.must_use_pawns == False
@@ -743,3 +756,8 @@ def test_ask_for_bad_type():
     g = BerkeleyGame()
     with pytest.raises(TypeError):
         g.ask_for('Not a KSMove.')
+
+
+def test_white_starts():
+    g = BerkeleyGame()
+    assert g.turn == chess.WHITE
