@@ -97,26 +97,26 @@ class BerkeleyGame(object):
     def _check_special_cases(self):
         def same_rank(from_sq, to_sq):
             # Or same row
-            return chess.rank_index(from_sq) == chess.rank_index(to_sq)
+            return chess.square_rank(from_sq) == chess.square_rank(to_sq)
         def same_file(from_sq, to_sq):
             # Or same column
-            return chess.file_index(from_sq) == chess.file_index(to_sq)
+            return chess.square_file(from_sq) == chess.square_file(to_sq)
         def sw_ne_diagonal(from_sq, to_sq):
             # Or on one lower-left upper-right diagonal
             # Parallel to A1H8
-            return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
-                    (chess.file_index(from_sq) - chess.file_index(to_sq)))
+            return ((chess.square_rank(from_sq) - chess.square_rank(to_sq)) ==
+                    (chess.square_file(from_sq) - chess.square_file(to_sq)))
         def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
             # Parallel to A8H1
-            return ((chess.rank_index(from_sq) - chess.rank_index(to_sq)) ==
-                    -(chess.file_index(from_sq) - chess.file_index(to_sq)))
+            return ((chess.square_rank(from_sq) - chess.square_rank(to_sq)) ==
+                    -(chess.square_file(from_sq) - chess.square_file(to_sq)))
         def is_short_diagonal(from_sq, to_sq):
             '''
             return True is diagonal is short
             '''
-            if (((chess.rank_index(to_sq) <= 3) and (chess.file_index(to_sq) <= 3)) or
-                    ((chess.rank_index(to_sq) > 3) and (chess.file_index(to_sq) > 3))):
+            if (((chess.square_rank(to_sq) <= 3) and (chess.square_file(to_sq) <= 3)) or
+                    ((chess.square_rank(to_sq) > 3) and (chess.square_file(to_sq) > 3))):
                 # This means that King is in lower-left quadrant or
                 # in upper-right quadrant
                 # In this quadrants NW_SE_diagonals are shortest
@@ -219,7 +219,7 @@ class BerkeleyGame(object):
         for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
             for attacked in list(self._players_board.attacks(square)):
                 if self._players_board.piece_at(attacked) is None:
-                    if chess.rank_index(attacked) in (0, 7):
+                    if chess.square_rank(attacked) in (0, 7):
                         # If capture is promotion for pawn.
                         possibilities.extend([
                             KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.QUEEN)),

@@ -1,5 +1,6 @@
 wheel
-python-chess[uci,gaviota]
+python-chess
 pytest
+pytest-cov
 twine
 pypandoc
