@@ -3,7 +3,10 @@
 [![Build Status](https://travis-ci.org/Kriegspiel/ks-game.svg?branch=master)](https://travis-ci.org/Kriegspiel/ks-game)
 [![PyPI version](https://badge.fury.io/py/kriegspiel.svg)](https://badge.fury.io/py/kriegspiel)
 [![codecov](https://codecov.io/gh/Kriegspiel/ks-game/branch/master/graph/badge.svg)](https://codecov.io/gh/Kriegspiel/ks-game)
---
+
+---
+
+# Kriegspiel Game Engine
 
 Supported Kriegspiel rules:
 
@@ -19,16 +22,23 @@ In plan:
 ### How-to
 
 Install
-``` bash
+
+```bash
 pip install kriegspiel
 ```
 
 Run tests
-``` bash
-# clone
-git clone https://github.com/Kriegspiel/ks-game.git
+
+```bash
+# clone this repo
+git clone git@github.com:Kriegspiel/ks-game.git
+# activate virtual env (optional)
+cd ks-game
+python3 -m venv ks-game-env
+source ks-game-env/bin/activate
 # install dependencies
-cd ks-game && pip install -r requirements.txt
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 # run tests
 python -m pytest tests/
 ```
