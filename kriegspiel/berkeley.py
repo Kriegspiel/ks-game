@@ -16,7 +16,18 @@ HALFMOVE_CLOCK_LIMIT = 2000
 
 
 class BerkeleyGame(object):
-    '''If any_rule = True – means Berkeley + Any'''
+    '''
+    Main class for Berkley Kriegspiel variant. Suppots two main variants:
+    with ANY rule and withour ANY rule. If any_rule = True — means Berkeley + Any
+    This class should be on server's side as has info about all pieces on the
+    board.
+
+    Communication with this class must be in the form of questions —
+    KriegspielMove(s) with QuestionAnnouncement(s).
+    
+    As the response this class with respond with KriegspielAnswer(s), with
+    MainAnnouncement(s) and SpecialCaseAnnouncement.
+    '''
 
     def __init__(self, any_rule=True):
         super(BerkeleyGame).__init__()
@@ -27,19 +38,29 @@ class BerkeleyGame(object):
         self._generate_possible_to_ask_list()
 
     def ask_for(self, move):
+        '''
+        The main public method for asking questions to the referee in the
+        form of KriegspielMove(s). This method returns KriegspielAnswer(s).
+        If the answer is in kriegspiel.move.MOVE_DONE then next question
+        must be from different plaer, else from the same player. Or it can
+        be SpecialCaseAnnoucement of CHECKMATE_* or DRAW_*.
+        '''
         if not isinstance(move, KSMove):
             raise TypeError
+        # Get the main response of the referee
         result = self._ask_for(move)
         # Regenerate possbile to ask list if move is done
         if result.move_done:
             self._generate_possible_to_ask_list()
-        # Remove non-pawn-captures is there is any pawn captures
+        # Remove non-pawn-captures if there is any pawn captures.
+        # As you MUST do pawn-capture move when you got posite
+        # response from the referee on ASK_ANY.
         if result.main_announcement == MA.HAS_ANY:
             self._possible_to_ask = list(
                         set(self._possible_to_ask) -
                     (set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
             )
-        # Remove pawn captures is there is no pawn captures
+        # Remove pawn captures if there is no pawn captures.
         if result.main_announcement == MA.NO_ANY:
             self._possible_to_ask = list(set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
         # Possible to ask about a move only once
@@ -52,6 +73,7 @@ class BerkeleyGame(object):
         '''
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         '''
+        # If player asks for non-sense move. Stop it.
         if move not in self.possible_to_ask:
             return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
@@ -68,11 +90,13 @@ class BerkeleyGame(object):
                         capture_at_square=captured_square,
                         special_announcement=special_case
                     )
-                # If it was regular move
+                # If it was regular move, and NO captures
                 return KSAnswer(MA.REGULAR_MOVE,
                     special_announcement=special_case
                 )
-            # If move is illegal
+            # If move is illegal for referee's perspective. But it's
+            # was possible move from asking plaer's perspective.
+            # IMPORTANT: That's a bit of new info for both players.
             return KSAnswer(MA.ILLEGAL_MOVE)
         elif move.question_type == QA.ASK_ANY:
             # Any Rule. Asking for any available pawn captures.
@@ -84,8 +108,13 @@ class BerkeleyGame(object):
                 return KSAnswer(MA.NO_ANY)
 
     def is_game_over(self):
+        '''
+        Returns True if game already ended.
+        '''
+        # If it is already over.
         if self._game_over:
             return True
+        # Or it is new condition.
         if (self._board.is_stalemate() or
                 self._board.is_insufficient_material() or
                 self._board.is_checkmate() or
@@ -95,6 +124,10 @@ class BerkeleyGame(object):
         return False
 
     def _check_special_cases(self):
+        '''
+        Method to identify kind of SpecialCaseAnnouncement if any.
+        If not a SpecialCase, then SpecialCaseAnnouncement.NONE.
+        '''
         def same_rank(from_sq, to_sq):
             # Or same row
             return chess.square_rank(from_sq) == chess.square_rank(to_sq)
@@ -103,17 +136,17 @@ class BerkeleyGame(object):
             return chess.square_file(from_sq) == chess.square_file(to_sq)
         def sw_ne_diagonal(from_sq, to_sq):
             # Or on one lower-left upper-right diagonal
-            # Parallel to A1H8
+            # Parallel to A1H8 / South-West – North-East
             return ((chess.square_rank(from_sq) - chess.square_rank(to_sq)) ==
                     (chess.square_file(from_sq) - chess.square_file(to_sq)))
         def nw_se_diagonal(from_sq, to_sq):
             # Or on one upper-left lower-right diagonal
-            # Parallel to A8H1
+            # Parallel to A8H1 / North-West — South-East
             return ((chess.square_rank(from_sq) - chess.square_rank(to_sq)) ==
                     -(chess.square_file(from_sq) - chess.square_file(to_sq)))
         def is_short_diagonal(from_sq, to_sq):
             '''
-            return True is diagonal is short
+            return True if diagonal is short
             '''
             if (((chess.square_rank(to_sq) <= 3) and (chess.square_file(to_sq) <= 3)) or
                     ((chess.square_rank(to_sq) > 3) and (chess.square_file(to_sq) > 3))):
@@ -135,6 +168,7 @@ class BerkeleyGame(object):
                 else:  # pragma: no cover
                     raise KeyError
         def kind_of_check(attacker_square, king_square):
+            # Identify type of check. That will be announced.
             if same_file(attacker_square, king_square):
                 return SCA.CHECK_FILE
             elif same_rank(attacker_square, king_square):
@@ -168,10 +202,12 @@ class BerkeleyGame(object):
             attackers = self._board.attackers(not self._board.turn, king_square)
             attackers_squares = list(attackers)
             if len(attackers_squares) == 2:
+                # If it's double check.
                 first = kind_of_check(attackers_squares[0], king_square)
                 second = kind_of_check(attackers_squares[1], king_square)
                 return SCA.CHECK_DOUBLE, [first, second]
             elif len(attackers_squares) == 1:
+                # If it's single check
                 attacker_square = attackers_squares[0]
                 return kind_of_check(attacker_square, king_square)
             else:  # pragma: no cover
@@ -179,6 +215,9 @@ class BerkeleyGame(object):
         return SCA.NONE
 
     def _get_captured_square(self, move):
+        '''
+        Square with capture will be announced.
+        '''
         if not self._board.is_en_passant(move):
             return move.to_square
         else:
@@ -188,6 +227,10 @@ class BerkeleyGame(object):
                 return move.to_square + 8
 
     def _make_move(self, move):
+        '''
+        Make the move on referee's board
+        and return square with capture.
+        '''
         self._must_use_pawns = False
         captured_square = None
         if self._board.is_capture(move):
@@ -196,6 +239,9 @@ class BerkeleyGame(object):
         return captured_square
 
     def _has_any_pawn_captures(self):
+        '''
+        To check if HAS_ANY pawn captures.
+        '''
         pawn_squares = self._board.pieces(chess.PAWN, self._board.turn)
         for move in self._board.legal_moves:
             if move.from_square in pawn_squares:
@@ -207,7 +253,12 @@ class BerkeleyGame(object):
         return move in self._board.legal_moves
 
     def _prepare_players_board(self):
+        '''
+        Make board that is visible for the current player.
+        '''
+        # Make a copy of the FULL board (referee's board)
         players_board = self._board.copy(stack=False)
+        # Remove all pieces belonging not to the current player
         for square in chess.SQUARES:
             if players_board.piece_at(square) is not None:
                 if players_board.piece_at(square).color is not self._board.turn:
@@ -237,11 +288,13 @@ class BerkeleyGame(object):
         if self._game_over:
             self._possible_to_ask = list()
             return
-        # Make a board that current player see
+        # Make the board that current player sees
         self._prepare_players_board()
-        # Now players_board is equal to board that current player see
+        # Now players_board is equal to board that current player sees
         possibilities = list()
-        # First collect all possible moves keeping in mind castling rules
+        # First collect all possible moves keeping in mind castling rules.
+        # Castling rules are kept as it is generated from referee's board,
+        # which contain info about previous moves.
         possibilities.extend([
             KSMove(QA.COMMON, chess_move)
             for chess_move in self._players_board.legal_moves
