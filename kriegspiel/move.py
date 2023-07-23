@@ -7,7 +7,7 @@ import chess
 
 @enum.unique
 class QuestionAnnouncement(enum.Enum):
-    '''
+    """
     There are two main quistion types (Question Announcements)
     in typical Kriegspiel game, plus technical NONE option:
     1. Common question, when player asks for a chess move.
@@ -15,17 +15,19 @@ class QuestionAnnouncement(enum.Enum):
         are any valid captures by pawns. This question is not valid
         in all Kriegspiel variants, but very common and make the
         game much more dynamic.
-    '''
+    """
+
     NONE = 0
     COMMON = 1
     ASK_ANY = 2
 
 
 class KriegspielMove(object):
-    '''
+    """
     Basic class to define main operations and validations
     for general Kriegspiel move.
-    '''
+    """
+
     def __init__(self, question_type, chess_move=None):
         super(KriegspielMove, self).__init__()
         # Validation, that question type is from valid enum
@@ -33,14 +35,13 @@ class KriegspielMove(object):
             raise TypeError
         # Validation, that if the question is from common type,
         # then it should be valid chess move object
-        if (question_type == QuestionAnnouncement.COMMON and
-                not isinstance(chess_move, chess.Move)):
+        if question_type == QuestionAnnouncement.COMMON and not isinstance(chess_move, chess.Move):
             raise TypeError
         self.question_type = question_type
         self.chess_move = chess_move
 
     def __str__(self):
-        return f'<KriegspielMove: {self.question_type}, move={self.chess_move}>'
+        return f"<KriegspielMove: {self.question_type}, move={self.chess_move}>"
 
     def __repr__(self):
         return self.__str__()
@@ -48,8 +49,7 @@ class KriegspielMove(object):
     def __eq__(self, other):
         if not isinstance(other, KriegspielMove):
             return False
-        if (self.chess_move == other.chess_move and
-                self.question_type == other.question_type):
+        if self.chess_move == other.chess_move and self.question_type == other.question_type:
             return True
         else:
             return False
@@ -66,10 +66,10 @@ class KriegspielMove(object):
 
 @enum.unique
 class MainAnnouncement(enum.Enum):
-    '''
+    """
     There are 6 valid options how to responed on Question Announcement
     in Kriegspiel game.
-    
+
     Four of them are for Common Question type:
     1. IMPOSSIBLE_TO_ASK — such move is illigal from regular chess
         perspective and that should be known by the player who asks.
@@ -89,7 +89,8 @@ class MainAnnouncement(enum.Enum):
         must ask only for pawn capture Common Question after that.
     2. NO_ANY — there is no available pawn caprures for the player, who
         ask. After that player can continue asking any Common Questions.
-    '''
+    """
+
     IMPOSSIBLE_TO_ASK = 0
     ILLEGAL_MOVE = 1
     REGULAR_MOVE = 2
@@ -100,20 +101,18 @@ class MainAnnouncement(enum.Enum):
 
 
 # There are to types of Main Announcements that corresspond for MOVE_DONE.
-MOVE_DONE = [
-    MainAnnouncement.REGULAR_MOVE,
-    MainAnnouncement.CAPTURE_DONE
-]
+MOVE_DONE = [MainAnnouncement.REGULAR_MOVE, MainAnnouncement.CAPTURE_DONE]
 
 
 @enum.unique
 class SpecialCaseAnnouncement(enum.Enum):
-    '''
+    """
     If the move set the game in one of the special condition,
     then Special Case Announcement is used. There are five of them
     for game end case — as DRAW or CHECKMATE. Also six if then for
     CHECK case. And oneof them technical — NONE.
-    '''
+    """
+
     NONE = -1
 
     DRAW_TOOMANYREVERSIBLEMOVES = 1
@@ -137,15 +136,16 @@ SINGLE_CHECK = [
     SpecialCaseAnnouncement.CHECK_FILE,
     SpecialCaseAnnouncement.CHECK_LONG_DIAGONAL,
     SpecialCaseAnnouncement.CHECK_SHORT_DIAGONAL,
-    SpecialCaseAnnouncement.CHECK_KNIGHT
+    SpecialCaseAnnouncement.CHECK_KNIGHT,
 ]
 
 
 class KriegspielAnswer(object):
-    '''
+    """
     Basic class to define main operations and validation for
     Kriegspiel answer.
-    '''
+    """
+
     def __init__(self, main_announcement, **kwargs):
         super(KriegspielAnswer, self).__init__()
         # Validation, that main announcement, can be only
@@ -164,12 +164,12 @@ class KriegspielAnswer(object):
             # Validation, that when capture done, then valid square should
             # announced. Chess lib store squares as ints.
             # TODO: Check if square number INT is in valid range.
-            if not isinstance(kwargs.get('capture_at_square'), int):
+            if not isinstance(kwargs.get("capture_at_square"), int):
                 raise TypeError
-            self._capture_at_square = kwargs['capture_at_square']
+            self._capture_at_square = kwargs["capture_at_square"]
 
-        if 'special_announcement' in kwargs:
-            sca = kwargs['special_announcement']
+        if "special_announcement" in kwargs:
+            sca = kwargs["special_announcement"]
             if isinstance(sca, SpecialCaseAnnouncement):
                 self._special_announcement = sca
             elif isinstance(sca, tuple):
@@ -223,13 +223,10 @@ class KriegspielAnswer(object):
         if isinstance(self._capture_at_square, int):
             capture_at = chess.SQUARE_NAMES[self._capture_at_square]
 
-        main_data = [
-            f'capture_at={capture_at}',
-            f'special_case={self._special_announcement}'
-        ]
+        main_data = [f"capture_at={capture_at}", f"special_case={self._special_announcement}"]
 
         if self._check_1 is not None or self._check_2 is not None:
-            extra_data = f'check_1={self._check_1}, check_2={self._check_2}'
+            extra_data = f"check_1={self._check_1}, check_2={self._check_2}"
             main_data.append(extra_data)
 
         return f'<KriegspielAnswer: {self._main_announcement}, {", ".join(main_data)}>'
