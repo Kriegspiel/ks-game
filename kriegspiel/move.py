@@ -83,7 +83,7 @@ class MainAnnouncement(enum.Enum):
 
     And there are two responses, that are special from ASK_ANY type of
     Question announcement:
-    1. HAS_ANY — there is at least one valid capture available for pawn
+    1. HAS_ANY — there is at least one valid capture available for the pawn
         of the player who asks. After that pawn capture should happen by
         asking for each possible capture, the order is not defined. A player
         must ask only for pawn capture Common Question after that.
