@@ -6,7 +6,7 @@
 
 ---
 
-# Kriegspiel Game Engine
+## Kriegspiel Game Engine
 
 Supported Kriegspiel rules:
 
@@ -19,15 +19,15 @@ In plan:
 2. Crazykrieg + Any
 
 
-### How-to
+## How-to
 
-Install
+### Install
 
 ```bash
 pip install kriegspiel
 ```
 
-Run tests
+### Run tests
 
 ```bash
 # clone this repo
@@ -41,4 +41,10 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 # run tests
 python -m pytest tests/
+```
+
+### Lint
+
+```bash
+black -l 128 %FILE%
 ```

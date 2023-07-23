@@ -8,12 +8,12 @@ import chess
 @enum.unique
 class QuestionAnnouncement(enum.Enum):
     """
-    There are two main quistion types (Question Announcements)
-    in typical Kriegspiel game, plus technical NONE option:
-    1. Common question, when player asks for a chess move.
-    2. ASK_NY — special question type, when player asks if there
+    There are two main question types (Question Announcements)
+    in a typical Kriegspiel game, plus a technical NONE option:
+    1. Common question, when a player asks for a chess move.
+    2. ASK_NY — special question type, when a player asks if there
         are any valid captures by pawns. This question is not valid
-        in all Kriegspiel variants, but very common and make the
+        in all Kriegspiel variants, but very common and makes the
         game much more dynamic.
     """
 
@@ -67,28 +67,28 @@ class KriegspielMove(object):
 @enum.unique
 class MainAnnouncement(enum.Enum):
     """
-    There are 6 valid options how to responed on Question Announcement
-    in Kriegspiel game.
+    There are 6 valid options for how to respond to Question Announcement
+    in the Kriegspiel game.
 
-    Four of them are for Common Question type:
-    1. IMPOSSIBLE_TO_ASK — such move is illigal from regular chess
+    Four of them are for the Common Question type:
+    1. IMPOSSIBLE_TO_ASK — such a move is illegal from regular chess
         perspective and that should be known by the player who asks.
-        In general, player should not ask such kind of questions, and
-        it should not be considered as question announcement at all.
-    2. ILLEGAL_MOVE — move is illigal from regular chess perspective,
-        but it is unknown for the player who asks. That is new information
+        In general, players should not ask such kind of questions, and
+        it should not be considered as a question announcement at all.
+    2. ILLEGAL_MOVE — a move is illegal from a regular chess perspective,
+        but it is unknown to the player who asks. That is new information
         for the players.
-    3. REGULAR_MOVE — move is valid, and immideatly done. No capture happened.
-    4. REGULAR_MOVE — move is valid, and immideatly done. Capture happened.
+    3. REGULAR_MOVE — a move is valid and immediatly done. No capture happened.
+    4. REGULAR_MOVE — a move is valid and immediatly done. Capture happened.
 
     And there are two responses, that are special from ASK_ANY type of
     Question announcement:
     1. HAS_ANY — there is at least one valid capture available for pawn
-        of the player who asks. After that pawn capture shoul happen by
-        asking for each possible capture, order is not defined. Player
+        of the player who asks. After that pawn capture should happen by
+        asking for each possible capture, the order is not defined. A player
         must ask only for pawn capture Common Question after that.
-    2. NO_ANY — there is no available pawn caprures for the player, who
-        ask. After that player can continue asking any Common Questions.
+    2. NO_ANY — there are no available pawn captures for the player, who
+        asks. After that player can continue asking any Common Questions.
     """
 
     IMPOSSIBLE_TO_ASK = 0
@@ -100,7 +100,7 @@ class MainAnnouncement(enum.Enum):
     NO_ANY = 5
 
 
-# There are to types of Main Announcements that corresspond for MOVE_DONE.
+# There are two types of Main Announcements that coresspond to MOVE_DONE.
 MOVE_DONE = [MainAnnouncement.REGULAR_MOVE, MainAnnouncement.CAPTURE_DONE]
 
 
@@ -109,8 +109,8 @@ class SpecialCaseAnnouncement(enum.Enum):
     """
     If the move set the game in one of the special condition,
     then Special Case Announcement is used. There are five of them
-    for game end case — as DRAW or CHECKMATE. Also six if then for
-    CHECK case. And oneof them technical — NONE.
+    for game end case — as DRAW or CHECKMATE. Also, six of then for
+    CHECK case. And one of them is technical — NONE.
     """
 
     NONE = -1
@@ -161,9 +161,9 @@ class KriegspielAnswer(object):
         self._check_2 = None
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
-            # Validation, that when capture done, then valid square should
+            # Validation, that when capture is done, then valid square should
             # announced. Chess lib store squares as ints.
-            # TODO: Check if square number INT is in valid range.
+            # TODO: Check if the square number INT is in the valid range.
             if not isinstance(kwargs.get("capture_at_square"), int):
                 raise TypeError
             self._capture_at_square = kwargs["capture_at_square"]
@@ -177,8 +177,8 @@ class KriegspielAnswer(object):
                     self._special_announcement = SpecialCaseAnnouncement.CHECK_DOUBLE
                     # TODO: Check if there are exactly two checks when double check.
                     for check in sca[1]:
-                        # Validation, that both checks that correspond to double check
-                        # are singe check.
+                        # Validation, that both checks correspond to double check
+                        # are single check.
                         if not check in SINGLE_CHECK:
                             raise TypeError
                     self._check_1 = sca[1][0]
