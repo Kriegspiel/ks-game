@@ -78,8 +78,8 @@ class MainAnnouncement(enum.Enum):
     2. ILLEGAL_MOVE — a move is illegal from a regular chess perspective,
         but it is unknown to the player who asks. That is new information
         for the players.
-    3. REGULAR_MOVE — a move is valid and immediatly done. No capture happened.
-    4. REGULAR_MOVE — a move is valid and immediatly done. Capture happened.
+    3. REGULAR_MOVE — a move is valid and immediately done. No capture happened.
+    4. REGULAR_MOVE — a move is valid and immediately done. Capture happened.
 
     And there are two responses, that are special from ASK_ANY type of
     Question announcement:
@@ -100,16 +100,16 @@ class MainAnnouncement(enum.Enum):
     NO_ANY = 5
 
 
-# There are two types of Main Announcements that coresspond to MOVE_DONE.
+# There are two types of Main Announcements that correspond to MOVE_DONE.
 MOVE_DONE = [MainAnnouncement.REGULAR_MOVE, MainAnnouncement.CAPTURE_DONE]
 
 
 @enum.unique
 class SpecialCaseAnnouncement(enum.Enum):
     """
-    If the move set the game in one of the special condition,
+    If the move set the game in one of the special conditions,
     then Special Case Announcement is used. There are five of them
-    for game end case — as DRAW or CHECKMATE. Also, six of then for
+    for game end cases — as DRAW or CHECKMATE. Also, six of then for
     CHECK case. And one of them is technical — NONE.
     """
 
