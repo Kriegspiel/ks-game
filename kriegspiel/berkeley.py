@@ -66,7 +66,8 @@ class BerkeleyGame(object):
             self._possible_to_ask = list(
                 # Yes, it could be simplified from the first glance, but it will be incorrect.
                 # As some pawn moves were alredy potentially asked.
-                set(self._possible_to_ask) - (set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
+                set(self._possible_to_ask)
+                - (set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
             )
         # Remove pawn captures if there is no pawn captures.
         if result.main_announcement == MA.NO_ANY:
@@ -109,7 +110,7 @@ class BerkeleyGame(object):
                 return KSAnswer(MA.HAS_ANY)
             else:
                 return KSAnswer(MA.NO_ANY)
-    
+
     def _record_the_move(self, move, answer):
         current_turn = self._board.turn
         if answer.move_done:

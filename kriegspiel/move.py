@@ -253,19 +253,19 @@ class KriegspielScoresheet:
         self.__moves_own = []
         self.__moves_opponent = []
         self.__last_move_number = 0
-    
+
     @property
     def moves_own(self):
         return self.__moves_own
-    
+
     @property
     def moves_opponent(self):
         return self.__moves_opponent
-    
+
     @property
     def color(self):
         return self.__color
-    
+
     def was_the_last_move_ended(self, color):
         if self.__color == color:
             last_set_of_questions = self.__moves_own[-1]
@@ -274,7 +274,7 @@ class KriegspielScoresheet:
         last_pair = last_set_of_questions[-1]
         last_answer = last_pair[1]
         return last_answer.move_done
-    
+
     def __get_current_move_number(self):
         if self.__last_move_number == 0:
             self.__last_move_number += 1
@@ -288,7 +288,7 @@ class KriegspielScoresheet:
             return self.__last_move_number
         # Same lengths of moves' lists, but one of the lists (black one), is still in progress.
         return self.__last_move_number
-    
+
     def record_move_own(self, move, answer):
         if not isinstance(move, KriegspielMove):
             raise ValueError
