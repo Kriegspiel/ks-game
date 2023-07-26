@@ -11,6 +11,8 @@ from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
+from kriegspiel.move import KriegspielScoresheet as KSSS
+
 
 HALFMOVE_CLOCK_LIMIT = 2000
 
@@ -36,6 +38,8 @@ class BerkeleyGame(object):
         self._must_use_pawns = False
         self._game_over = False
         self._generate_possible_to_ask_list()
+        self._whites_scoresheet = KSSS(chess.WHITE)
+        self._blacks_scoresheet = KSSS(chess.BLACK)
 
     def ask_for(self, move):
         """
@@ -49,6 +53,9 @@ class BerkeleyGame(object):
             raise TypeError
         # Get the main response of the referee
         result = self._ask_for(move)
+        # Record the move if it was legit question.
+        if result.main_announcement != MA.IMPOSSIBLE_TO_ASK:
+            self._record_the_move(move, result)
         # Regenerate possible to asking list if a move is done
         if result.move_done:
             self._generate_possible_to_ask_list()
@@ -57,6 +64,8 @@ class BerkeleyGame(object):
         # response from the referee on ASK_ANY.
         if result.main_announcement == MA.HAS_ANY:
             self._possible_to_ask = list(
+                # Yes, it could be simplified from the first glance, but it will be incorrect.
+                # As some pawn moves were alredy potentially asked.
                 set(self._possible_to_ask) - (set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
             )
         # Remove pawn captures if there is no pawn captures.
@@ -100,6 +109,17 @@ class BerkeleyGame(object):
                 return KSAnswer(MA.HAS_ANY)
             else:
                 return KSAnswer(MA.NO_ANY)
+    
+    def _record_the_move(self, move, answer):
+        current_turn = self._board.turn
+        if answer.move_done:
+            current_turn = not current_turn
+        if current_turn == chess.WHITE:
+            self._whites_scoresheet.record_move_own(move, answer)
+            self._blacks_scoresheet.record_move_opponent(move.question_type, answer)
+        else:
+            self._blacks_scoresheet.record_move_own(move, answer)
+            self._whites_scoresheet.record_move_opponent(move.question_type, answer)
 
     def is_game_over(self):
         """
