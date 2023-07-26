@@ -2,7 +2,7 @@
 version = {attr = "kriegspiel.__version__"}
 
 [project]
-name = "Kriegspiel"
+name = "kriegspiel"
 dynamic = ["version"]
 authors = [
   { name="Fil", email="alexander@kriegspiel.org" },
@@ -20,5 +20,5 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "kriegspiel.org"
+"Homepage" = "https://github.com/Kriegspiel/ks-game/"
 "Bug Tracker" = "https://github.com/Kriegspiel/ks-game/issues"

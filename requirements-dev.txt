@@ -1,6 +1,5 @@
-wheel
+build
 pytest
 pytest-cov
 twine
-pypandoc
 black
