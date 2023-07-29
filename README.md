@@ -9,7 +9,7 @@
 
 Supported Kriegspiel rules:
 
-1. Berkeley
+1. [Berkeley](https://github.com/Kriegspiel/content/blob/master/rules/berkeley.md)
 2. Berkeley + Any
 
 In plan:
