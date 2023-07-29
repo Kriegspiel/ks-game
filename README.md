@@ -1,6 +1,5 @@
 # Python Kriegspiel Game
 
-[![Build Status](https://travis-ci.org/Kriegspiel/ks-game.svg?branch=master)](https://travis-ci.org/Kriegspiel/ks-game)
 [![PyPI version](https://badge.fury.io/py/kriegspiel.svg)](https://badge.fury.io/py/kriegspiel)
 [![codecov](https://codecov.io/gh/Kriegspiel/ks-game/branch/master/graph/badge.svg)](https://codecov.io/gh/Kriegspiel/ks-game)
 
