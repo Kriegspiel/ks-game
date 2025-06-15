@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+"""
+Integration tests for the Berkeley Kriegspiel game engine.
+
+This module contains comprehensive tests for the BerkeleyGame class,
+covering game mechanics, rule enforcement, and edge cases.
+Test categories:
+- Basic moves and game flow
+- Kriegspiel-specific rules (ANY questions, pawn captures)
+- Special cases (checks, checkmates, draws)
+- Edge cases (long games, complex positions)
+"""
 
 import pytest
 
@@ -13,6 +24,7 @@ from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 
+@pytest.mark.integration
 def test_white_e2e4():
     g = BerkeleyGame()
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4))) == KSAnswer(MA.REGULAR_MOVE)
@@ -24,6 +36,7 @@ def test_black_regular_move():
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5))) == KSAnswer(MA.REGULAR_MOVE)
 
 
+@pytest.mark.rules
 def test_white_any_true():
     g = BerkeleyGame()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
@@ -33,6 +46,7 @@ def test_white_any_true():
     assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.HAS_ANY)
 
 
+@pytest.mark.rules
 def test_black_any_true():
     g = BerkeleyGame()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
@@ -177,6 +191,7 @@ def test_white_capture_en_passant():
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E5, chess.F6))) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F5)
 
 
+@pytest.mark.rules
 def test_check_short_diagonal():
     g = BerkeleyGame()
     g._board.clear()
@@ -307,6 +322,8 @@ def test_impossible_to_promotion_without_piece_spesification():
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.A7, chess.A8))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
+@pytest.mark.edge_case
+@pytest.mark.slow
 def test_200_reversible_moves():
     g = BerkeleyGame()
     for _ in range(499):
@@ -384,6 +401,8 @@ def test_five_fold_then_checkmate():
     )
 
 
+@pytest.mark.edge_case
+@pytest.mark.slow
 def test_75_moves_is_not_draw():
     g = BerkeleyGame()
     g._board.clear()
@@ -491,6 +510,7 @@ def test_75_moves_is_not_draw():
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D8, chess.D7))) == KSAnswer(MA.REGULAR_MOVE)
 
 
+@pytest.mark.rules
 def test_stalemate():
     g = BerkeleyGame()
     g._board.clear()
@@ -504,6 +524,7 @@ def test_stalemate():
     )
 
 
+@pytest.mark.rules
 def test_white_wins():
     g = BerkeleyGame()
     g._board.clear()

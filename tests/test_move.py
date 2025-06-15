@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+"""
+Unit tests for Kriegspiel data structures and move handling.
+
+This module contains tests for the core data structures used in Kriegspiel:
+- KriegspielMove: Player questions and move requests
+- KriegspielAnswer: Referee responses  
+- KriegspielScoresheet: Game history tracking
+
+These are primarily unit tests focusing on data validation,
+type checking, and individual component behavior.
+"""
 
 import pytest
 
@@ -15,11 +26,13 @@ from kriegspiel.move import SpecialCaseAnnouncement as SCA
 from kriegspiel.move import KriegspielScoresheet as KSSS
 
 
+@pytest.mark.unit
 def test_incorrect_move_type():
     with pytest.raises(TypeError):
         KSMove("Not a QuestionAnnouncement.")
 
 
+@pytest.mark.unit
 def test_incorrect_chess_move_type():
     with pytest.raises(TypeError):
         KSMove(QA.COMMON, "Not a chess.Move.")
@@ -39,6 +52,7 @@ def test_move_ne_nonmove():
     assert KSMove(QA.ASK_ANY) != "A nonmove."
 
 
+@pytest.mark.unit
 def test_incorrect_answer_type():
     with pytest.raises(TypeError):
         KSAnswer("Not a MainAnnouncement.")
@@ -127,11 +141,13 @@ def test_ksanswer_hash():
     assert hash_a == hash_b
 
 
+@pytest.mark.unit
 def test_ksss_empty_own_moves():
     a = KSSS(chess.WHITE)
     assert len(a.moves_own) == 0
 
 
+@pytest.mark.unit
 def test_ksss_opponents_moves():
     a = KSSS(chess.WHITE)
     a.record_move_opponent(
