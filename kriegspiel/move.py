@@ -29,6 +29,19 @@ class KriegspielMove(object):
     """
 
     def __init__(self, question_type, chess_move=None):
+        """
+        Initialize a Kriegspiel move question.
+        
+        Args:
+            question_type: Type of question from QuestionAnnouncement enum.
+                          Must be COMMON (for regular moves) or ASK_ANY (for pawn capture queries).
+            chess_move: Required for COMMON questions. A python-chess Move object 
+                       representing the desired move. Should be None for ASK_ANY questions.
+        
+        Raises:
+            TypeError: If question_type is not a QuestionAnnouncement enum value,
+                      or if chess_move is not provided for COMMON questions.
+        """
         super(KriegspielMove, self).__init__()
         # Validation, that question type is from valid enum
         if not isinstance(question_type, QuestionAnnouncement):
@@ -41,12 +54,35 @@ class KriegspielMove(object):
         self.chess_move = chess_move
 
     def __str__(self):
+        """
+        Return string representation of the move.
+        
+        Returns:
+            String in format "<KriegspielMove: {question_type}, move={chess_move}>"
+        """
         return f"<KriegspielMove: {self.question_type}, move={self.chess_move}>"
 
     def __repr__(self):
+        """
+        Return detailed string representation of the move.
+        
+        Returns:
+            Same as __str__ for debugging purposes.
+        """
         return self.__str__()
 
     def __eq__(self, other):
+        """
+        Check equality with another KriegspielMove.
+        
+        Two moves are equal if they have the same question_type and chess_move.
+        
+        Args:
+            other: Object to compare with.
+            
+        Returns:
+            True if moves are equivalent, False otherwise.
+        """
         if not isinstance(other, KriegspielMove):
             return False
         if self.chess_move == other.chess_move and self.question_type == other.question_type:
@@ -55,12 +91,41 @@ class KriegspielMove(object):
             return False
 
     def __ne__(self, other):
+        """
+        Check inequality with another KriegspielMove.
+        
+        Args:
+            other: Object to compare with.
+            
+        Returns:
+            True if moves are not equivalent, False if they are equal.
+        """
         return not self.__eq__(other)
 
     def __lt__(self, other):
+        """
+        Compare moves for sorting purposes.
+        
+        Comparison is based on string representation for consistent ordering.
+        
+        Args:
+            other: Another KriegspielMove to compare with.
+            
+        Returns:
+            True if this move should be sorted before the other.
+        """
         return self.__str__() < other.__str__()
 
     def __hash__(self):
+        """
+        Generate hash value for the move.
+        
+        Enables KriegspielMove objects to be used in sets and as dictionary keys.
+        Hash is based on string representation for consistency with equality.
+        
+        Returns:
+            Integer hash value.
+        """
         return hash(self.__str__())
 
 
@@ -142,11 +207,34 @@ SINGLE_CHECK = [
 
 class KriegspielAnswer(object):
     """
-    Basic class to define main operations and validation for
-    Kriegspiel answer.
+    Represents the referee's response to a Kriegspiel move question.
+    
+    This class encapsulates all information the referee provides after a player
+    asks a question, including the main outcome, any captures, and special
+    game state announcements like check or checkmate.
     """
 
     def __init__(self, main_announcement, **kwargs):
+        """
+        Initialize a Kriegspiel referee answer.
+        
+        Args:
+            main_announcement: The primary response type from MainAnnouncement enum.
+                             Values include MOVE_DONE, CAPTURE_DONE, ILLEGAL_MOVE, 
+                             IMPOSSIBLE_TO_ASK, HAS_ANY, NO_ANY.
+            **kwargs: Additional answer details:
+                capture_at_square (int): Required for CAPTURE_DONE. Square number (0-63)
+                                       where the capture occurred.
+                special_announcement: Optional special game state from SpecialCaseAnnouncement
+                                    enum. Can be a single value or tuple for double check.
+                                    For CHECK_DOUBLE, provide (CHECK_DOUBLE, [check1, check2]).
+        
+        Raises:
+            TypeError: If main_announcement is not a MainAnnouncement enum value,
+                      or if capture_at_square is not an integer when required.
+            ValueError: If capture_at_square is outside valid range (0-63),
+                       or if double check doesn't have exactly two check types.
+        """
         super(KriegspielAnswer, self).__init__()
         # Validation, that main announcement, can be only
         # Main Announcement.
@@ -200,29 +288,77 @@ class KriegspielAnswer(object):
 
     @property
     def main_announcement(self):
+        """
+        Get the primary outcome of the move question.
+        
+        Returns:
+            MainAnnouncement: The main response type (MOVE_DONE, CAPTURE_DONE, etc.)
+        """
         return self._main_announcement
 
     @property
     def capture_at_square(self):
+        """
+        Get the square where a capture occurred.
+        
+        Returns:
+            int or None: Square number (0-63) if a capture happened, None otherwise.
+                        Only set when main_announcement is CAPTURE_DONE.
+        """
         return self._capture_at_square
 
     @property
     def special_announcement(self):
+        """
+        Get any special game state announcement.
+        
+        Returns:
+            SpecialCaseAnnouncement: Special condition like CHECK_RANK, CHECKMATE_WHITE_WINS,
+                                   DRAW_STALEMATE, etc. Returns NONE if no special condition.
+        """
         return self._special_announcement
 
     @property
     def move_done(self):
+        """
+        Check if the move was successfully completed.
+        
+        Returns:
+            bool: True if the move was executed (MOVE_DONE or CAPTURE_DONE),
+                 False if move was illegal or impossible.
+        """
         return self._move_done
 
     @property
     def check_1(self):
+        """
+        Get the first check type in a double check situation.
+        
+        Returns:
+            SpecialCaseAnnouncement or None: First check type when special_announcement
+                                            is CHECK_DOUBLE, None otherwise.
+        """
         return self._check_1
 
     @property
     def check_2(self):
+        """
+        Get the second check type in a double check situation.
+        
+        Returns:
+            SpecialCaseAnnouncement or None: Second check type when special_announcement
+                                            is CHECK_DOUBLE, None otherwise.
+        """
         return self._check_2
 
     def __str__(self):
+        """
+        Return string representation of the answer.
+        
+        Returns:
+            String showing main announcement, capture square (if any), special cases,
+            and check details in format "<KriegspielAnswer: main_announcement, details>"
+        """
         capture_at = None
         if isinstance(self._capture_at_square, int):
             capture_at = chess.SQUARE_NAMES[self._capture_at_square]
@@ -236,23 +372,84 @@ class KriegspielAnswer(object):
         return f'<KriegspielAnswer: {self._main_announcement}, {", ".join(main_data)}>'
 
     def __repr__(self):
+        """
+        Return detailed string representation of the answer.
+        
+        Returns:
+            Same as __str__ for debugging purposes.
+        """
         return self.__str__()
 
     def __eq__(self, other):
+        """
+        Check equality with another KriegspielAnswer.
+        
+        Two answers are equal if their string representations match.
+        
+        Args:
+            other: Object to compare with.
+            
+        Returns:
+            True if answers are equivalent, False otherwise.
+        """
         return self.__str__() == other.__str__()
 
     def __ne__(self, other):
+        """
+        Check inequality with another KriegspielAnswer.
+        
+        Args:
+            other: Object to compare with.
+            
+        Returns:
+            True if answers are not equivalent, False if they are equal.
+        """
         return not self.__eq__(other)
 
     def __lt__(self, other):
+        """
+        Compare answers for sorting purposes.
+        
+        Comparison is based on string representation for consistent ordering.
+        
+        Args:
+            other: Another KriegspielAnswer to compare with.
+            
+        Returns:
+            True if this answer should be sorted before the other.
+        """
         return self.__str__() < other.__str__()
 
     def __hash__(self):
+        """
+        Generate hash value for the answer.
+        
+        Enables KriegspielAnswer objects to be used in sets and as dictionary keys.
+        Hash is based on string representation for consistency with equality.
+        
+        Returns:
+            Integer hash value.
+        """
         return hash(self.__str__())
 
 
 class KriegspielScoresheet:
+    """
+    Maintains game history for a player in Kriegspiel.
+    
+    This class tracks both the player's own moves and the opponent's visible moves
+    with their outcomes, enabling game replay and analysis. Each player has their
+    own scoresheet containing only the information visible to them.
+    """
+    
     def __init__(self, color=chess.WHITE):
+        """
+        Initialize a scoresheet for a player.
+        
+        Args:
+            color: Chess color (chess.WHITE or chess.BLACK) of the player
+                  this scoresheet belongs to. Defaults to WHITE.
+        """
         self.__color = color
         self.__moves_own = []
         self.__moves_opponent = []
@@ -260,17 +457,47 @@ class KriegspielScoresheet:
 
     @property
     def moves_own(self):
+        """
+        Get the player's own move history.
+        
+        Returns:
+            List of move sets, where each move set is a list of (question, answer) pairs
+            representing all questions asked during one turn.
+        """
         return self.__moves_own
 
     @property
     def moves_opponent(self):
+        """
+        Get the opponent's visible move history.
+        
+        Returns:
+            List of move sets, where each move set contains the opponent's questions
+            and answers that were visible to this player.
+        """
         return self.__moves_opponent
 
     @property
     def color(self):
+        """
+        Get the color of the player this scoresheet belongs to.
+        
+        Returns:
+            bool: chess.WHITE (True) or chess.BLACK (False)
+        """
         return self.__color
 
     def was_the_last_move_ended(self, color):
+        """
+        Check if the last move by the specified color resulted in a completed move.
+        
+        Args:
+            color: Chess color (chess.WHITE or chess.BLACK) to check
+            
+        Returns:
+            bool: True if the last move was completed (not just a question),
+                 False if the last question was illegal or impossible.
+        """
         if self.__color == color:
             last_set_of_questions = self.__moves_own[-1]
         else:
@@ -280,6 +507,15 @@ class KriegspielScoresheet:
         return last_answer.move_done
 
     def __get_current_move_number(self):
+        """
+        Get the current move number for recording purposes.
+        
+        Private method that tracks move numbering to organize questions
+        and answers into proper turn sequences.
+        
+        Returns:
+            int: Current move number for organizing the scoresheet.
+        """
         if self.__last_move_number == 0:
             self.__last_move_number += 1
             return self.__last_move_number
@@ -294,6 +530,16 @@ class KriegspielScoresheet:
         return self.__last_move_number
 
     def record_move_own(self, move, answer):
+        """
+        Record a move made by this player.
+        
+        Args:
+            move: KriegspielMove object representing the question asked
+            answer: KriegspielAnswer object representing the referee's response
+            
+        Raises:
+            ValueError: If move is not a KriegspielMove or answer is not a KriegspielAnswer
+        """
         if not isinstance(move, KriegspielMove):
             raise ValueError
         if not isinstance(answer, KriegspielAnswer):
@@ -305,6 +551,17 @@ class KriegspielScoresheet:
             self.__moves_own.append([(move, answer)])
 
     def record_move_opponent(self, question, answer):
+        """
+        Record a move made by the opponent that was visible to this player.
+        
+        Args:
+            question: QuestionAnnouncement representing the type of opponent's question
+            answer: KriegspielAnswer object representing the referee's response
+                   that was announced to this player
+            
+        Raises:
+            ValueError: If question is not a QuestionAnnouncement or answer is not a KriegspielAnswer
+        """
         if not isinstance(question, QuestionAnnouncement):
             raise ValueError
         if not isinstance(answer, KriegspielAnswer):
