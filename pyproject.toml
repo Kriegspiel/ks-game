@@ -16,7 +16,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
     "Topic :: Games/Entertainment",
-    "Operating System :: OS Independent",
 ]
 
 [project.urls]
