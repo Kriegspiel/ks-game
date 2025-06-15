@@ -163,10 +163,12 @@ class KriegspielAnswer(object):
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             # Validation, that when capture is done, then valid square should
             # announced. Chess lib store squares as ints.
-            # TODO: Check if the square number INT is in the valid range.
             if not isinstance(kwargs.get("capture_at_square"), int):
-                raise TypeError
-            self._capture_at_square = kwargs["capture_at_square"]
+                raise TypeError("Capture square must be an integer")
+            square = kwargs["capture_at_square"]
+            if not (0 <= square <= 63):  # Chess board has 64 squares (0-63)
+                raise ValueError(f"Invalid square number: {square}. Must be 0-63.")
+            self._capture_at_square = square
 
         if "special_announcement" in kwargs:
             sca = kwargs["special_announcement"]

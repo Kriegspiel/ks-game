@@ -114,6 +114,25 @@ def test_captue_at_square():
     assert a.capture_at_square == chess.E2
 
 
+@pytest.mark.unit
+def test_capture_square_range_validation():
+    """Test that capture squares must be within valid range (0-63)."""
+    # Valid squares (0-63) should work
+    KSAnswer(MA.CAPTURE_DONE, capture_at_square=0)   # A1
+    KSAnswer(MA.CAPTURE_DONE, capture_at_square=63)  # H8
+    KSAnswer(MA.CAPTURE_DONE, capture_at_square=32)  # Middle square
+    
+    # Invalid squares should raise ValueError
+    with pytest.raises(ValueError, match="Invalid square number: -1. Must be 0-63."):
+        KSAnswer(MA.CAPTURE_DONE, capture_at_square=-1)
+    
+    with pytest.raises(ValueError, match="Invalid square number: 64. Must be 0-63."):
+        KSAnswer(MA.CAPTURE_DONE, capture_at_square=64)
+    
+    with pytest.raises(ValueError, match="Invalid square number: 100. Must be 0-63."):
+        KSAnswer(MA.CAPTURE_DONE, capture_at_square=100)
+
+
 def test_special_annoucement():
     a = KSAnswer(MA.REGULAR_MOVE, special_announcement=SCA.CHECK_RANK)
     assert a.special_announcement == SCA.CHECK_RANK
