@@ -67,11 +67,11 @@ class BerkeleyGame(object):
                 # Yes, it could be simplified from the first glance, but it will be incorrect.
                 # As some pawn moves were alredy potentially asked.
                 set(self._possible_to_ask)
-                - (set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
+                - (set(self._possible_to_ask) - set(self._generate_possible_pawn_captures()))
             )
         # Remove pawn captures if there is no pawn captures.
         if result.main_announcement == MA.NO_ANY:
-            self._possible_to_ask = list(set(self._possible_to_ask) - set(self._generate_posible_pawn_captures()))
+            self._possible_to_ask = list(set(self._possible_to_ask) - set(self._generate_possible_pawn_captures()))
         # Possible to ask about a move only once
         if result.main_announcement in (MA.ILLEGAL_MOVE, MA.NO_ANY):
             # For `has any` already deleted
@@ -290,7 +290,7 @@ class BerkeleyGame(object):
                     players_board.remove_piece_at(square)
         self._players_board = players_board
 
-    def _generate_posible_pawn_captures(self):
+    def _generate_possible_pawn_captures(self):
         possibilities = list()
         for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
             for attacked in list(self._players_board.attacks(square)):
@@ -327,7 +327,7 @@ class BerkeleyGame(object):
             # Always possible to ask ANY?
             possibilities.append(KSMove(QA.ASK_ANY))
         # Second add possible pawn captures
-        possibilities.extend(self._generate_posible_pawn_captures())
+        possibilities.extend(self._generate_possible_pawn_captures())
         # And remove finally — remove duplicates
         self._possible_to_ask = list(set(possibilities))
 
