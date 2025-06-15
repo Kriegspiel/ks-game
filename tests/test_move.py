@@ -104,6 +104,59 @@ def test_valid_double_check():
     assert a.check_2 == SCA.CHECK_KNIGHT
 
 
+@pytest.mark.unit
+def test_double_check_validation_count():
+    """Test that double check must have exactly two checks."""
+    # Valid: exactly 2 checks
+    KSAnswer(
+        MA.REGULAR_MOVE,
+        special_announcement=(
+            SCA.CHECK_DOUBLE,
+            [SCA.CHECK_RANK, SCA.CHECK_FILE],
+        ),
+    )
+    
+    # Invalid: only 1 check
+    with pytest.raises(ValueError, match="Double check must have exactly two check types"):
+        KSAnswer(
+            MA.REGULAR_MOVE,
+            special_announcement=(
+                SCA.CHECK_DOUBLE,
+                [SCA.CHECK_RANK],
+            ),
+        )
+    
+    # Invalid: 3 checks
+    with pytest.raises(ValueError, match="Double check must have exactly two check types"):
+        KSAnswer(
+            MA.REGULAR_MOVE,
+            special_announcement=(
+                SCA.CHECK_DOUBLE,
+                [SCA.CHECK_RANK, SCA.CHECK_FILE, SCA.CHECK_KNIGHT],
+            ),
+        )
+    
+    # Invalid: empty list
+    with pytest.raises(ValueError, match="Double check must have exactly two check types"):
+        KSAnswer(
+            MA.REGULAR_MOVE,
+            special_announcement=(
+                SCA.CHECK_DOUBLE,
+                [],
+            ),
+        )
+    
+    # Invalid: not a list/tuple
+    with pytest.raises(ValueError, match="Double check must have exactly two check types"):
+        KSAnswer(
+            MA.REGULAR_MOVE,
+            special_announcement=(
+                SCA.CHECK_DOUBLE,
+                "not_a_list",
+            ),
+        )
+
+
 def test_SCA_not_tuple_or_SCA():
     with pytest.raises(TypeError):
         KSAnswer(MA.REGULAR_MOVE, special_announcement="Unexpected type.")

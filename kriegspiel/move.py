@@ -177,12 +177,14 @@ class KriegspielAnswer(object):
             elif isinstance(sca, tuple):
                 if sca[0] == SpecialCaseAnnouncement.CHECK_DOUBLE:
                     self._special_announcement = SpecialCaseAnnouncement.CHECK_DOUBLE
-                    # TODO: Check if there are exactly two checks when double check.
+                    # Validation that double check has exactly two checks
+                    if not isinstance(sca[1], (list, tuple)) or len(sca[1]) != 2:
+                        raise ValueError("Double check must have exactly two check types")
                     for check in sca[1]:
                         # Validation, that both checks correspond to double check
                         # are single check.
                         if not check in SINGLE_CHECK:
-                            raise TypeError
+                            raise TypeError("Each check in double check must be a valid single check type")
                     self._check_1 = sca[1][0]
                     self._check_2 = sca[1][1]
                 else:
