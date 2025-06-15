@@ -38,8 +38,10 @@ source ks-game-env/bin/activate
 # install dependencies
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
-# run tests
-python -m pytest tests/
+# run all tests
+python run_tests.py
+# see all test options
+python run_tests.py --help
 ```
 
 ### Lint
