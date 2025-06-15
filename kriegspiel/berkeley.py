@@ -32,6 +32,15 @@ class BerkeleyGame(object):
     """
 
     def __init__(self, any_rule=True):
+        """
+        Initialize a new Berkeley Kriegspiel game.
+        
+        Args:
+            any_rule: Whether to enable the "Any" rule extension. When True,
+                     players can ask "Are there any pawn captures?" to detect
+                     possible captures. This makes the game more dynamic but
+                     changes the strategy significantly. Defaults to True.
+        """
         super(BerkeleyGame).__init__()
         self._any_rule = any_rule
         self._board = chess.Board()
@@ -43,11 +52,29 @@ class BerkeleyGame(object):
 
     def ask_for(self, move):
         """
-        The main public method for asking questions to the referee in the
-        form of KriegspielMove(s). This method returns KriegspielAnswer(s).
-        If the answer is in kriegspiel.move.MOVE_DONE then the next question
-        must be from a different player, else from the same player. Or it can
-        be SpecialCaseAnnoucement of CHECKMATE_* or DRAW_*.
+        Ask the referee a question about a potential move.
+        
+        This is the main public interface for interacting with the Kriegspiel referee.
+        Players submit KriegspielMove questions and receive KriegspielAnswer responses
+        containing the outcome and any special announcements.
+        
+        Args:
+            move: KriegspielMove object representing either a COMMON move question
+                 (asking if a specific chess move is legal) or an ASK_ANY question
+                 (asking if there are any pawn captures available).
+        
+        Returns:
+            KriegspielAnswer: Contains the main announcement (MOVE_DONE, ILLEGAL_MOVE, etc.),
+                            any capture information, and special case announcements like
+                            CHECK, CHECKMATE, or DRAW conditions.
+        
+        Raises:
+            TypeError: If move is not a KriegspielMove object.
+            
+        Note:
+            - If the answer is MOVE_DONE, the next question must be from the other player
+            - If the answer is ILLEGAL_MOVE or IMPOSSIBLE_TO_ASK, the same player continues
+            - After HAS_ANY response, player must make a pawn capture move
         """
         if not isinstance(move, KSMove):
             raise TypeError
@@ -124,7 +151,15 @@ class BerkeleyGame(object):
 
     def is_game_over(self):
         """
-        Returns True if game already ended.
+        Check if the game has ended and update game state accordingly.
+        
+        Evaluates current board position for terminal conditions including
+        checkmate, stalemate, insufficient material, and repetition rules.
+        Updates the internal _game_over flag when a terminal state is detected.
+        
+        Returns:
+            bool: True if the game has ended due to any terminal condition,
+                 False if the game can continue.
         """
         # If it is already over.
         if self._game_over:
@@ -265,7 +300,13 @@ class BerkeleyGame(object):
 
     def _has_any_pawn_captures(self):
         """
-        To check if HAS_ANY pawn captures.
+        Check if the current player has any possible pawn captures.
+        
+        Used to answer ASK_ANY questions about whether pawn captures are available.
+        
+        Returns:
+            bool: True if there are any legal pawn capture moves available,
+                 False if no pawn captures are possible.
         """
         pawn_squares = self._board.pieces(chess.PAWN, self._board.turn)
         for move in self._board.legal_moves:
@@ -275,11 +316,24 @@ class BerkeleyGame(object):
         return False
 
     def _is_legal_move(self, move):
+        """
+        Check if a chess move is legal in the current position.
+        
+        Args:
+            move: python-chess Move object to validate
+            
+        Returns:
+            bool: True if the move is legal, False otherwise.
+        """
         return move in self._board.legal_moves
 
     def _prepare_players_board(self):
         """
-        Make board that is visible for the current player.
+        Create the board state visible to the current player.
+        
+        Generates a copy of the main board with only the current player's pieces
+        visible, simulating what the player can see in Kriegspiel where opponent
+        pieces are hidden.
         """
         # Make a copy of the FULL board (referee's board)
         players_board = self._board.copy(stack=False)
@@ -291,6 +345,13 @@ class BerkeleyGame(object):
         self._players_board = players_board
 
     def _generate_possible_pawn_captures(self):
+        """
+        Generate all possible pawn capture moves for the current player.
+        
+        Returns:
+            List[KriegspielMove]: All possible pawn captures including regular
+                                captures and captures with promotion to all piece types.
+        """
         possibilities = list()
         for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
             for attacked in list(self._players_board.attacks(square)):
@@ -311,6 +372,17 @@ class BerkeleyGame(object):
         return possibilities
 
     def _generate_possible_to_ask_list(self):
+        """
+        Generate list of all possible questions/moves for the current player.
+        
+        This method creates the complete list of legal questions the current player
+        can ask, including regular moves from their visible board state, possible
+        pawn captures, and ASK_ANY questions if the any_rule is enabled.
+        
+        Note:
+            This method has known performance issues with complex positions and
+            may be slow in games with many possible moves.
+        """
         # Very slow. :(
         if self._game_over:
             self._possible_to_ask = list()
@@ -333,19 +405,60 @@ class BerkeleyGame(object):
 
     @property
     def possible_to_ask(self):
+        """
+        Get list of currently possible moves and questions for the active player.
+        
+        Returns:
+            List[KriegspielMove]: All legal moves and questions the current player
+                                can ask, including regular moves, pawn captures,
+                                and ASK_ANY questions (if any_rule is enabled).
+        """
         return self._possible_to_ask
 
     @property
     def game_over(self):
+        """
+        Check if the game has ended.
+        
+        Returns:
+            bool: True if the game is over due to checkmate, stalemate,
+                 or draw conditions. False if the game is still active.
+        """
         return self._game_over
 
     @property
     def must_use_pawns(self):
+        """
+        Check if the current player must make a pawn capture move.
+        
+        This is set to True after a player receives HAS_ANY response,
+        forcing them to make one of the available pawn captures.
+        
+        Returns:
+            bool: True if player must capture with a pawn, False otherwise.
+        """
         return self._must_use_pawns
 
     @property
     def turn(self):
+        """
+        Get whose turn it is to move.
+        
+        Returns:
+            bool: chess.WHITE (True) if it's White's turn,
+                 chess.BLACK (False) if it's Black's turn.
+        """
         return self._board.turn
 
     def is_possible_to_ask(self, move):
+        """
+        Check if a specific move/question is currently legal to ask.
+        
+        Args:
+            move: KriegspielMove object to check
+            
+        Returns:
+            bool: True if the move is in the current list of possible questions,
+                 False if it's not allowed or has already been asked.
+        """
         return move in self.possible_to_ask
