@@ -12,6 +12,7 @@ from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 from kriegspiel.move import KriegspielScoresheet as KSSS
+from kriegspiel.serialization import save_game_to_json, load_game_from_json
 
 
 HALFMOVE_CLOCK_LIMIT = 2000
@@ -462,3 +463,25 @@ class BerkeleyGame(object):
                  False if it's not allowed or has already been asked.
         """
         return move in self.possible_to_ask
+
+    def save_game(self, filename):
+        """
+        Save the current game state to a JSON file.
+        
+        Args:
+            filename: Path to the file where the game state will be saved
+        """
+        save_game_to_json(self, filename)
+
+    @classmethod
+    def load_game(cls, filename):
+        """
+        Load a game state from a JSON file.
+        
+        Args:
+            filename: Path to the file containing the saved game state
+            
+        Returns:
+            BerkeleyGame: New game instance with restored state
+        """
+        return load_game_from_json(filename)
