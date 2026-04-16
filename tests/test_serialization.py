@@ -20,7 +20,7 @@ from kriegspiel.serialization import (
     serialize_kriegspiel_scoresheet, deserialize_kriegspiel_scoresheet,
     serialize_berkeley_game, deserialize_berkeley_game,
     save_game_to_json, load_game_from_json,
-    KriegspielJSONEncoder,
+    KriegspielJSONEncoder, SERIALIZATION_VERSION,
     SerializationError, UnsupportedVersionError, MalformedDataError
 )
 
@@ -339,10 +339,11 @@ class TestBerkeleyGameSerializer:
         game = BerkeleyGame(any_rule=True)
         result = serialize_berkeley_game(game)
         
-        assert result["version"] == "1.2.0"
+        assert result["version"] == SERIALIZATION_VERSION
         assert result["game_type"] == "BerkeleyGame"
         assert result["game_state"]["any_rule"] is True
         assert result["game_state"]["board_fen"] == chess.Board().fen()
+        assert result["game_state"]["move_stack"] == []
         assert result["game_state"]["must_use_pawns"] is False
         assert result["game_state"]["game_over"] is False
         assert "white_scoresheet" in result["game_state"]
@@ -363,6 +364,7 @@ class TestBerkeleyGameSerializer:
         # Check that moves are recorded in scoresheets
         white_moves = result["game_state"]["white_scoresheet"]["moves_own"]
         black_moves = result["game_state"]["black_scoresheet"]["moves_own"]
+        assert result["game_state"]["move_stack"] == ["e2e4", "e7e5"]
         
         assert len(white_moves) == 1
         assert len(black_moves) == 1
@@ -410,6 +412,23 @@ class TestBerkeleyGameSerializer:
         # Check that scoresheets are preserved
         assert len(deserialized._whites_scoresheet.moves_own) == len(game._whites_scoresheet.moves_own)
         assert len(deserialized._blacks_scoresheet.moves_own) == len(game._blacks_scoresheet.moves_own)
+
+    def test_deserialize_legacy_payload_without_move_stack(self):
+        game = BerkeleyGame(any_rule=True)
+        serialized = serialize_berkeley_game(game)
+        serialized["game_state"].pop("move_stack")
+
+        deserialized = deserialize_berkeley_game(serialized)
+
+        assert deserialized._board.fen() == game._board.fen()
+
+    def test_deserialize_rejects_mismatched_move_stack(self):
+        game = BerkeleyGame(any_rule=True)
+        serialized = serialize_berkeley_game(game)
+        serialized["game_state"]["move_stack"] = ["e2e4"]
+
+        with pytest.raises(MalformedDataError, match="Serialized move_stack does not match board_fen"):
+            deserialize_berkeley_game(serialized)
 
 
 class TestFileOperations:
@@ -492,6 +511,38 @@ class TestJSONEncoder:
         
         assert parsed["question_type"] == "COMMON"
         assert parsed["chess_move"] == "e2e4"
+
+    def test_json_encoder_with_chess_move(self):
+        move = chess.Move.from_uci("e2e4")
+
+        assert json.dumps(move, cls=KriegspielJSONEncoder) == '"e2e4"'
+
+    def test_json_encoder_with_enum(self):
+        assert json.dumps(QuestionAnnouncement.COMMON, cls=KriegspielJSONEncoder) == '"COMMON"'
+
+    def test_json_encoder_with_answer(self):
+        answer = KriegspielAnswer(MainAnnouncement.CAPTURE_DONE, capture_at_square=chess.E4)
+
+        parsed = json.loads(json.dumps(answer, cls=KriegspielJSONEncoder))
+
+        assert parsed["main_announcement"] == "CAPTURE_DONE"
+        assert parsed["capture_at_square"] == chess.E4
+
+    def test_json_encoder_with_scoresheet(self):
+        scoresheet = KriegspielScoresheet(chess.WHITE)
+        scoresheet.record_move_own(
+            KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")),
+            KriegspielAnswer(MainAnnouncement.REGULAR_MOVE),
+        )
+
+        parsed = json.loads(json.dumps(scoresheet, cls=KriegspielJSONEncoder))
+
+        assert parsed["color"] == "WHITE"
+        assert parsed["moves_own"][0][0][0]["chess_move"] == "e2e4"
+
+    def test_json_encoder_rejects_unsupported_object(self):
+        with pytest.raises(TypeError):
+            json.dumps(object(), cls=KriegspielJSONEncoder)
 
 
 class TestEdgeCases:
@@ -589,17 +640,18 @@ class TestErrorHandling:
     
     def test_malformed_berkeley_game_data(self):
         # Test with correct version but missing game_state
-        data = {"version": "1.2.0", "game_type": "BerkeleyGame", "invalid": "data"}
+        data = {"version": SERIALIZATION_VERSION, "game_type": "BerkeleyGame", "invalid": "data"}
         with pytest.raises(MalformedDataError, match="Invalid BerkeleyGame data structure"):
             deserialize_berkeley_game(data)
     
     def test_invalid_board_fen(self):
         data = {
-            "version": "1.2.0",
+            "version": SERIALIZATION_VERSION,
             "game_type": "BerkeleyGame",
             "game_state": {
                 "any_rule": True,
                 "board_fen": "invalid_fen_string",
+                "move_stack": [],
                 "must_use_pawns": False,
                 "game_over": False,
                 "white_scoresheet": {
@@ -621,11 +673,38 @@ class TestErrorHandling:
     
     def test_invalid_game_type(self):
         data = {
-            "version": "1.2.0",
+            "version": SERIALIZATION_VERSION,
             "game_type": "SomeOtherGame",
             "game_state": {}
         }
         with pytest.raises(MalformedDataError, match="Invalid game type: SomeOtherGame"):
+            deserialize_berkeley_game(data)
+
+    def test_invalid_move_stack_entry(self):
+        data = {
+            "version": SERIALIZATION_VERSION,
+            "game_type": "BerkeleyGame",
+            "game_state": {
+                "any_rule": True,
+                "board_fen": chess.Board().fen(),
+                "move_stack": ["bad_move"],
+                "must_use_pawns": False,
+                "game_over": False,
+                "white_scoresheet": {
+                    "color": "WHITE",
+                    "moves_own": [],
+                    "moves_opponent": [],
+                    "last_move_number": 0
+                },
+                "black_scoresheet": {
+                    "color": "BLACK",
+                    "moves_own": [],
+                    "moves_opponent": [],
+                    "last_move_number": 0
+                }
+            }
+        }
+        with pytest.raises(MalformedDataError, match="Invalid move_stack entry: bad_move"):
             deserialize_berkeley_game(data)
     
     def test_save_to_invalid_path(self):
