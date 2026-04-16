@@ -317,6 +317,10 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         # Restore scoresheets
         game._whites_scoresheet = deserialize_kriegspiel_scoresheet(game_state["white_scoresheet"])
         game._blacks_scoresheet = deserialize_kriegspiel_scoresheet(game_state["black_scoresheet"])
+
+        scoresheet_move_stack = _move_stack_from_scoresheets(game._whites_scoresheet, game._blacks_scoresheet)
+        if scoresheet_move_stack != move_stack:
+            raise MalformedDataError("Scoresheet-derived moves do not match move_stack")
         
         # Regenerate possible moves list for current position
         game._generate_possible_to_ask_list()
@@ -324,6 +328,36 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         return game
     except (KeyError, TypeError) as e:
         raise MalformedDataError(f"Invalid BerkeleyGame data structure") from e
+
+
+def _move_stack_from_scoresheets(white_scoresheet: KriegspielScoresheet, black_scoresheet: KriegspielScoresheet) -> List[str]:
+    """Extract the executed chess moves recorded in both players' own scoresheets."""
+    extracted: List[str] = []
+    max_turns = max(len(white_scoresheet.moves_own), len(black_scoresheet.moves_own))
+
+    for turn_index in range(max_turns):
+        if turn_index < len(white_scoresheet.moves_own):
+            extracted.extend(_completed_moves_from_turn(white_scoresheet.moves_own[turn_index]))
+        if turn_index < len(black_scoresheet.moves_own):
+            extracted.extend(_completed_moves_from_turn(black_scoresheet.moves_own[turn_index]))
+
+    return extracted
+
+
+def _completed_moves_from_turn(turn: List[Tuple[KriegspielMove, KriegspielAnswer]]) -> List[str]:
+    """Return UCI moves for successful COMMON questions within a single turn."""
+    completed_moves: List[str] = []
+    for move, answer in turn:
+        if move.question_type != QuestionAnnouncement.COMMON or not answer.move_done:
+            continue
+        if move.chess_move is None:
+            raise MalformedDataError("Scoresheet move is missing chess_move")
+        completed_moves.append(move.chess_move.uci())
+
+    if len(completed_moves) > 1:
+        raise MalformedDataError("Scoresheet turn contains multiple completed moves")
+
+    return completed_moves
 
 
 def save_game_to_json(game, filename: str) -> None:

@@ -429,6 +429,35 @@ class TestBerkeleyGameSerializer:
         with pytest.raises(MalformedDataError, match="Serialized move_stack does not match board_fen"):
             deserialize_berkeley_game(serialized)
 
+    def test_deserialize_rejects_scoresheet_move_mismatch(self):
+        game = BerkeleyGame(any_rule=True)
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")))
+        serialized = serialize_berkeley_game(game)
+        serialized["game_state"]["white_scoresheet"]["moves_own"][0][0][0]["chess_move"] = "d2d4"
+
+        with pytest.raises(MalformedDataError, match="Scoresheet-derived moves do not match move_stack"):
+            deserialize_berkeley_game(serialized)
+
+    def test_deserialize_rejects_multiple_completed_moves_in_single_turn(self):
+        game = BerkeleyGame(any_rule=True)
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")))
+        serialized = serialize_berkeley_game(game)
+        serialized["game_state"]["white_scoresheet"]["moves_own"][0].append(
+            [
+                {"question_type": "COMMON", "chess_move": "g1f3"},
+                {
+                    "main_announcement": "REGULAR_MOVE",
+                    "capture_at_square": None,
+                    "special_announcement": "NONE",
+                    "check_1": None,
+                    "check_2": None,
+                },
+            ]
+        )
+
+        with pytest.raises(MalformedDataError, match="Scoresheet turn contains multiple completed moves"):
+            deserialize_berkeley_game(serialized)
+
 
 class TestFileOperations:
     """Test save/load game to/from files."""
