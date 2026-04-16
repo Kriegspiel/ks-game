@@ -8,7 +8,7 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 
 JSON Schema Structure:
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "game_type": "BerkeleyGame",
   "game_state": {
     "any_rule": bool,
@@ -291,20 +291,25 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         except ValueError as e:
             raise MalformedDataError(f"Invalid board FEN: {game_state['board_fen']}") from e
 
-        move_stack = game_state.get("move_stack")
-        if move_stack is None:
-            game._board = fen_board
-        else:
-            board = chess.Board()
-            try:
-                for move_uci in move_stack:
-                    board.push_uci(move_uci)
-            except ValueError as e:
-                raise MalformedDataError(f"Invalid move_stack entry: {move_uci}") from e
+        if "move_stack" not in game_state:
+            raise MalformedDataError("Missing move_stack in BerkeleyGame data")
 
-            if board.fen() != game_state["board_fen"]:
-                raise MalformedDataError("Serialized move_stack does not match board_fen")
-            game._board = board
+        move_stack = game_state["move_stack"]
+        if not isinstance(move_stack, list):
+            raise MalformedDataError("Invalid move_stack: expected a list of UCI moves")
+
+        board = chess.Board()
+        try:
+            for move_uci in move_stack:
+                if not isinstance(move_uci, str):
+                    raise MalformedDataError(f"Invalid move_stack entry: {move_uci}")
+                board.push_uci(move_uci)
+        except ValueError as e:
+            raise MalformedDataError(f"Invalid move_stack entry: {move_uci}") from e
+
+        if board.fen() != game_state["board_fen"]:
+            raise MalformedDataError("Serialized move_stack does not match board_fen")
+        game._board = board
             
         game._must_use_pawns = game_state["must_use_pawns"]
         game._game_over = game_state["game_over"]

@@ -413,14 +413,13 @@ class TestBerkeleyGameSerializer:
         assert len(deserialized._whites_scoresheet.moves_own) == len(game._whites_scoresheet.moves_own)
         assert len(deserialized._blacks_scoresheet.moves_own) == len(game._blacks_scoresheet.moves_own)
 
-    def test_deserialize_legacy_payload_without_move_stack(self):
+    def test_deserialize_rejects_missing_move_stack(self):
         game = BerkeleyGame(any_rule=True)
         serialized = serialize_berkeley_game(game)
         serialized["game_state"].pop("move_stack")
 
-        deserialized = deserialize_berkeley_game(serialized)
-
-        assert deserialized._board.fen() == game._board.fen()
+        with pytest.raises(MalformedDataError, match="Missing move_stack in BerkeleyGame data"):
+            deserialize_berkeley_game(serialized)
 
     def test_deserialize_rejects_mismatched_move_stack(self):
         game = BerkeleyGame(any_rule=True)
@@ -705,6 +704,33 @@ class TestErrorHandling:
             }
         }
         with pytest.raises(MalformedDataError, match="Invalid move_stack entry: bad_move"):
+            deserialize_berkeley_game(data)
+
+    def test_invalid_move_stack_type(self):
+        data = {
+            "version": SERIALIZATION_VERSION,
+            "game_type": "BerkeleyGame",
+            "game_state": {
+                "any_rule": True,
+                "board_fen": chess.Board().fen(),
+                "move_stack": "e2e4",
+                "must_use_pawns": False,
+                "game_over": False,
+                "white_scoresheet": {
+                    "color": "WHITE",
+                    "moves_own": [],
+                    "moves_opponent": [],
+                    "last_move_number": 0
+                },
+                "black_scoresheet": {
+                    "color": "BLACK",
+                    "moves_own": [],
+                    "moves_opponent": [],
+                    "last_move_number": 0
+                }
+            }
+        }
+        with pytest.raises(MalformedDataError, match="Invalid move_stack: expected a list of UCI moves"):
             deserialize_berkeley_game(data)
     
     def test_save_to_invalid_path(self):

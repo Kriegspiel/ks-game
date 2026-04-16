@@ -1,5 +1,11 @@
 # Release Notes
 
+## Kriegspiel v. 1.2.1
+
+- **Serialization Integrity**: `BerkeleyGame` payloads now require `move_stack` and validate it against `board_fen` during deserialization
+- **Safety**: malformed or inconsistent move history now fails fast instead of silently falling back to board-only restoration
+- **Testing**: serialization coverage remains at 100% with explicit checks for missing and invalid `move_stack`
+
 ## Kriegspiel v. 1.1.2
 
 - **Major Documentation Improvement**: Added comprehensive docstrings to all classes and methods
