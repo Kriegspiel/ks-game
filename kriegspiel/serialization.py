@@ -13,6 +13,7 @@ JSON Schema Structure:
   "game_state": {
     "any_rule": bool,
     "board_fen": str,
+    "move_stack": [str],  // UCI moves used to verify board reconstruction
     "must_use_pawns": bool, 
     "game_over": bool,
     "white_scoresheet": {
@@ -254,6 +255,7 @@ def serialize_berkeley_game(game) -> Dict[str, Any]:
         "game_state": {
             "any_rule": game._any_rule,
             "board_fen": game._board.fen(),
+            "move_stack": [move.uci() for move in game._board.move_stack],
             "must_use_pawns": game._must_use_pawns,
             "game_over": game._game_over,
             "white_scoresheet": serialize_kriegspiel_scoresheet(game._whites_scoresheet),
@@ -283,11 +285,26 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         # Create new game instance
         game = BerkeleyGame(any_rule=game_state["any_rule"])
         
-        # Restore board state
+        # Validate the stored FEN even when we can rebuild from move history.
         try:
-            game._board = chess.Board(game_state["board_fen"])
+            fen_board = chess.Board(game_state["board_fen"])
         except ValueError as e:
             raise MalformedDataError(f"Invalid board FEN: {game_state['board_fen']}") from e
+
+        move_stack = game_state.get("move_stack")
+        if move_stack is None:
+            game._board = fen_board
+        else:
+            board = chess.Board()
+            try:
+                for move_uci in move_stack:
+                    board.push_uci(move_uci)
+            except ValueError as e:
+                raise MalformedDataError(f"Invalid move_stack entry: {move_uci}") from e
+
+            if board.fen() != game_state["board_fen"]:
+                raise MalformedDataError("Serialized move_stack does not match board_fen")
+            game._board = board
             
         game._must_use_pawns = game_state["must_use_pawns"]
         game._game_over = game_state["game_over"]
