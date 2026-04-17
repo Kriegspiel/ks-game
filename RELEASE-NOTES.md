@@ -1,5 +1,9 @@
 # Release Notes
 
+## Kriegspiel v. 1.2.2
+
+- **README Refresh**: simplified the package overview and trimmed maintainer-focused setup details from the published project description
+
 ## Kriegspiel v. 1.2.1
 
 - **Serialization Integrity**: `BerkeleyGame` payloads now require `move_stack` and validate it against `board_fen` during deserialization
