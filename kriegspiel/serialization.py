@@ -8,14 +8,16 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 
 JSON Schema Structure:
 {
-  "version": "1.2.1",
+  "schema_version": 3,
+  "library_version": "1.2.3",
   "game_type": "BerkeleyGame",
   "game_state": {
     "any_rule": bool,
     "board_fen": str,
     "move_stack": [str],  // UCI moves used to verify board reconstruction
-    "must_use_pawns": bool, 
+    "must_use_pawns": bool,
     "game_over": bool,
+    "possible_to_ask": [...],  // Serialized KriegspielMove values for exact turn-state recovery
     "white_scoresheet": {
       "color": "WHITE",
       "moves_own": [...],
@@ -23,7 +25,7 @@ JSON Schema Structure:
       "last_move_number": int
     },
     "black_scoresheet": {
-      "color": "BLACK", 
+      "color": "BLACK",
       "moves_own": [...],
       "moves_opponent": [...],
       "last_move_number": int
@@ -63,8 +65,8 @@ from kriegspiel.move import (
 # Import version from main module
 from kriegspiel import __version__
 
-# Current serialization format version matches module version
-SERIALIZATION_VERSION = __version__
+LEGACY_SERIALIZATION_SCHEMA_VERSION = 2
+SERIALIZATION_SCHEMA_VERSION = 3
 
 
 class SerializationError(Exception):
@@ -165,6 +167,20 @@ def deserialize_kriegspiel_move(data: Dict[str, Any]) -> KriegspielMove:
         raise MalformedDataError(f"Invalid KriegspielMove data: {data}") from e
 
 
+def serialize_possible_to_ask(moves: List[KriegspielMove]) -> List[Dict[str, Any]]:
+    """Serialize current turn-state questions in a stable order."""
+    serialized = [serialize_kriegspiel_move(move) for move in moves]
+    serialized.sort(key=lambda item: (item["question_type"], item["chess_move"] or ""))
+    return serialized
+
+
+def deserialize_possible_to_ask(data: Any) -> List[KriegspielMove]:
+    """Deserialize serialized possible_to_ask entries."""
+    if not isinstance(data, list):
+        raise MalformedDataError("Invalid possible_to_ask: expected a list of KriegspielMove values")
+    return [deserialize_kriegspiel_move(item) for item in data]
+
+
 def serialize_kriegspiel_answer(answer: KriegspielAnswer) -> Dict[str, Any]:
     """Serialize KriegspielAnswer to dictionary."""
     return {
@@ -250,7 +266,8 @@ def deserialize_kriegspiel_scoresheet(data: Dict[str, Any]) -> KriegspielScoresh
 def serialize_berkeley_game(game) -> Dict[str, Any]:
     """Serialize BerkeleyGame to dictionary."""
     return {
-        "version": SERIALIZATION_VERSION,
+        "schema_version": SERIALIZATION_SCHEMA_VERSION,
+        "library_version": __version__,
         "game_type": "BerkeleyGame",
         "game_state": {
             "any_rule": game._any_rule,
@@ -258,6 +275,7 @@ def serialize_berkeley_game(game) -> Dict[str, Any]:
             "move_stack": [move.uci() for move in game._board.move_stack],
             "must_use_pawns": game._must_use_pawns,
             "game_over": game._game_over,
+            "possible_to_ask": serialize_possible_to_ask(game.possible_to_ask),
             "white_scoresheet": serialize_kriegspiel_scoresheet(game._whites_scoresheet),
             "black_scoresheet": serialize_kriegspiel_scoresheet(game._blacks_scoresheet)
         }
@@ -267,10 +285,12 @@ def serialize_berkeley_game(game) -> Dict[str, Any]:
 def deserialize_berkeley_game(data: Dict[str, Any]):
     """Deserialize dictionary to BerkeleyGame."""
     try:
-        # Check version compatibility
-        version = data.get("version", "unknown")
-        if version != SERIALIZATION_VERSION:
-            raise UnsupportedVersionError(f"Unsupported version: {version}. Expected: {SERIALIZATION_VERSION}")
+        # Check schema compatibility. Legacy payloads used `version` instead.
+        schema_version = data.get("schema_version")
+        if schema_version is None:
+            schema_version = LEGACY_SERIALIZATION_SCHEMA_VERSION if "version" in data else "unknown"
+        if schema_version not in {LEGACY_SERIALIZATION_SCHEMA_VERSION, SERIALIZATION_SCHEMA_VERSION}:
+            raise UnsupportedVersionError(f"Unsupported schema_version: {schema_version}")
         
         # Check game type
         game_type = data.get("game_type", "unknown")
@@ -321,9 +341,16 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         scoresheet_move_stack = _move_stack_from_scoresheets(game._whites_scoresheet, game._blacks_scoresheet)
         if scoresheet_move_stack != move_stack:
             raise MalformedDataError("Scoresheet-derived moves do not match move_stack")
-        
-        # Regenerate possible moves list for current position
-        game._generate_possible_to_ask_list()
+
+        if schema_version == SERIALIZATION_SCHEMA_VERSION:
+            if "possible_to_ask" not in game_state:
+                raise MalformedDataError("Missing possible_to_ask in BerkeleyGame data")
+            game._possible_to_ask = deserialize_possible_to_ask(game_state["possible_to_ask"])
+        else:
+            # Legacy saved payloads did not preserve exact turn-state questions.
+            game._generate_possible_to_ask_list()
+            if game._must_use_pawns:
+                game._possible_to_ask = list(game._generate_possible_pawn_captures())
         
         return game
     except (KeyError, TypeError) as e:
