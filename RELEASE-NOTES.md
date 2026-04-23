@@ -1,5 +1,12 @@
 # Release Notes
 
+## Kriegspiel v. 1.2.5
+
+- **Ruleset Foundation**: Berkeley-family rule behavior now goes through an explicit ruleset policy layer, which keeps the hidden-board engine ready for future Cincinnati / Wild 16 support without hard-coding every variant into `BerkeleyGame`
+- **Public Snapshots**: `BerkeleyGame` and `KriegspielScoresheet` now expose snapshot APIs, and JSON serialization rebuilds game state through those public snapshots instead of mutating private fields directly
+- **Packaging Modernization**: project metadata, pytest, and coverage configuration now live in `pyproject.toml`, with build-system metadata, optional test/dev extras, and a default coverage floor
+- **Developer Ergonomics**: common type/validation failures in `move.py` and `berkeley.py` now raise clearer error messages
+
 ## Kriegspiel v. 1.2.4
 
 - **Move Identity**: `KriegspielMove` and `KriegspielAnswer` now use structured equality, ordering, and hashing instead of string-based identity

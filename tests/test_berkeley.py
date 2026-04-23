@@ -22,6 +22,10 @@ from kriegspiel.move import QuestionAnnouncement as QA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
+from kriegspiel.rulesets import RULESET_BERKELEY
+from kriegspiel.rulesets import RULESET_BERKELEY_ANY
+from kriegspiel.rulesets import resolve_ruleset_policy
+from kriegspiel.snapshot import BerkeleyGameSnapshot
 
 
 @pytest.mark.integration
@@ -55,6 +59,36 @@ def test_black_any_true():
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
     assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.HAS_ANY)
+
+
+def test_explicit_ruleset_can_disable_ask_any():
+    g = BerkeleyGame(ruleset=RULESET_BERKELEY)
+
+    assert g.ruleset_id == RULESET_BERKELEY
+    assert g.any_rule is False
+    assert KSMove(QA.ASK_ANY) not in g.possible_to_ask
+
+
+def test_conflicting_ruleset_arguments_are_rejected():
+    with pytest.raises(ValueError, match="conflicts"):
+        BerkeleyGame(ruleset=RULESET_BERKELEY, any_rule=True)
+
+
+def test_unknown_ruleset_is_rejected():
+    with pytest.raises(ValueError, match="Unsupported ruleset"):
+        BerkeleyGame(ruleset="wild16")
+
+
+def test_ruleset_policy_returns_none_for_non_special_question():
+    policy = resolve_ruleset_policy(ruleset=RULESET_BERKELEY_ANY)
+
+    assert policy.handle_special_question(BerkeleyGame(), KSMove(QA.NONE)) is None
+
+
+def test_ruleset_policy_rejects_ask_any_when_disabled():
+    policy = resolve_ruleset_policy(ruleset=RULESET_BERKELEY)
+
+    assert policy.handle_special_question(BerkeleyGame(any_rule=False), KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_black_illegal_after_any_true():
@@ -899,3 +933,80 @@ def test_white_starts():
 def test_if_berkeley_wo_any():
     g = BerkeleyGame(any_rule=False)
     assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+
+
+def test_snapshot_roundtrip_preserves_ruleset_and_questions():
+    g = BerkeleyGame(ruleset=RULESET_BERKELEY_ANY)
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+
+    restored = BerkeleyGame.from_snapshot(g.snapshot())
+
+    assert restored.ruleset_id == g.ruleset_id
+    assert restored.any_rule == g.any_rule
+    assert restored.turn == g.turn
+    assert set(restored.possible_to_ask) == set(g.possible_to_ask)
+
+
+def test_snapshot_roundtrip_can_rebuild_legacy_possible_to_ask():
+    g = BerkeleyGame()
+    snapshot = g.snapshot()
+    legacy_snapshot = BerkeleyGameSnapshot(
+        ruleset_id=snapshot.ruleset_id,
+        any_rule=snapshot.any_rule,
+        board_fen=snapshot.board_fen,
+        move_stack=snapshot.move_stack,
+        must_use_pawns=snapshot.must_use_pawns,
+        game_over=snapshot.game_over,
+        possible_to_ask=None,
+        white_scoresheet=snapshot.white_scoresheet,
+        black_scoresheet=snapshot.black_scoresheet,
+    )
+
+    restored = BerkeleyGame.from_snapshot(legacy_snapshot)
+
+    assert restored.ruleset_id == g.ruleset_id
+    assert set(restored.possible_to_ask) == set(g.possible_to_ask)
+
+
+def test_snapshot_roundtrip_can_rebuild_legacy_must_use_pawns_state():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D1, chess.H5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H5, chess.G6)))
+    g.ask_for(KSMove(QA.ASK_ANY))
+
+    snapshot = g.snapshot()
+    legacy_snapshot = BerkeleyGameSnapshot(
+        ruleset_id=snapshot.ruleset_id,
+        any_rule=snapshot.any_rule,
+        board_fen=snapshot.board_fen,
+        move_stack=snapshot.move_stack,
+        must_use_pawns=snapshot.must_use_pawns,
+        game_over=snapshot.game_over,
+        possible_to_ask=None,
+        white_scoresheet=snapshot.white_scoresheet,
+        black_scoresheet=snapshot.black_scoresheet,
+    )
+
+    restored = BerkeleyGame.from_snapshot(legacy_snapshot)
+
+    assert restored.must_use_pawns is True
+    assert set(restored.possible_to_ask) == set(g._generate_possible_pawn_captures())
+
+
+def test_from_snapshot_rejects_wrong_type():
+    with pytest.raises(TypeError, match="BerkeleyGameSnapshot"):
+        BerkeleyGame.from_snapshot("not-a-snapshot")
+
+
+def test_ask_for_reports_unsupported_question_type_once_it_is_marked_possible():
+    g = BerkeleyGame()
+    strange_question = KSMove(QA.NONE)
+    g._possible_to_ask.append(strange_question)
+    g._possible_to_ask_set.add(strange_question)
+
+    with pytest.raises(ValueError, match="Unsupported question type"):
+        g._ask_for(strange_question)

@@ -24,6 +24,8 @@ from kriegspiel.serialization import (
     KriegspielJSONEncoder, SERIALIZATION_SCHEMA_VERSION, _completed_moves_from_turn,
     SerializationError, UnsupportedVersionError, MalformedDataError
 )
+from kriegspiel.rulesets import RULESET_BERKELEY
+from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 
 
 class TestChessMoveSerializer:
@@ -343,6 +345,7 @@ class TestBerkeleyGameSerializer:
         assert result["schema_version"] == SERIALIZATION_SCHEMA_VERSION
         assert isinstance(result["library_version"], str)
         assert result["game_type"] == "BerkeleyGame"
+        assert result["game_state"]["ruleset_id"] == RULESET_BERKELEY_ANY
         assert result["game_state"]["any_rule"] is True
         assert result["game_state"]["board_fen"] == chess.Board().fen()
         assert result["game_state"]["move_stack"] == []
@@ -378,6 +381,7 @@ class TestBerkeleyGameSerializer:
         deserialized = deserialize_berkeley_game(serialized)
         
         assert deserialized._any_rule == original_game._any_rule
+        assert deserialized.ruleset_id == RULESET_BERKELEY
         assert deserialized._board.fen() == original_game._board.fen()
         assert deserialized._must_use_pawns == original_game._must_use_pawns
         assert deserialized._game_over == original_game._game_over
@@ -407,6 +411,7 @@ class TestBerkeleyGameSerializer:
         
         # Check that game state is preserved
         assert deserialized._any_rule == game._any_rule
+        assert deserialized.ruleset_id == game.ruleset_id
         assert deserialized._board.fen() == game._board.fen()
         assert deserialized._must_use_pawns == game._must_use_pawns
         assert deserialized._game_over == game._game_over
@@ -593,11 +598,37 @@ class TestEdgeCases:
         game = BerkeleyGame(any_rule=False)
         result = serialize_berkeley_game(game)
         
+        assert result["game_state"]["ruleset_id"] == RULESET_BERKELEY
         assert result["game_state"]["any_rule"] is False
         
         # Deserialize and verify
         deserialized = deserialize_berkeley_game(result)
         assert deserialized._any_rule is False
+        assert deserialized.ruleset_id == RULESET_BERKELEY
+
+    def test_deserialize_previous_schema_without_ruleset_id(self):
+        game = BerkeleyGame(any_rule=True)
+        result = serialize_berkeley_game(game)
+        result["schema_version"] = 3
+        result["game_state"].pop("ruleset_id")
+
+        deserialized = deserialize_berkeley_game(result)
+
+        assert deserialized.ruleset_id == RULESET_BERKELEY_ANY
+        assert deserialized.any_rule is True
+
+    def test_deserialize_legacy_version_field_still_works(self):
+        game = BerkeleyGame(any_rule=True)
+        result = serialize_berkeley_game(game)
+        result.pop("schema_version")
+        result["version"] = "legacy"
+        result["game_state"].pop("ruleset_id")
+        result["game_state"].pop("possible_to_ask")
+
+        deserialized = deserialize_berkeley_game(result)
+
+        assert deserialized.ruleset_id == RULESET_BERKELEY_ANY
+        assert deserialized.any_rule is True
     
     def test_serialize_game_after_any_question(self):
         game = BerkeleyGame(any_rule=True)

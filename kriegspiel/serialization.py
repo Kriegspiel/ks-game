@@ -8,10 +8,11 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 
 JSON Schema Structure:
 {
-  "schema_version": 3,
-  "library_version": "1.2.3",
+  "schema_version": 4,
+  "library_version": "1.2.5",
   "game_type": "BerkeleyGame",
   "game_state": {
+    "ruleset_id": "berkeley_any",
     "any_rule": bool,
     "board_fen": str,
     "move_stack": [str],  // UCI moves used to verify board reconstruction
@@ -54,19 +55,25 @@ moves_own/moves_opponent: [
 """
 
 import json
+from typing import Any, Dict, List, Optional, Union
+
 import chess
-from typing import Dict, Any, List, Tuple, Union, Optional
 
 from kriegspiel.move import (
     QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement,
     KriegspielMove, KriegspielAnswer, KriegspielScoresheet
 )
+from kriegspiel.snapshot import BerkeleyGameSnapshot
+from kriegspiel.snapshot import ScoresheetSnapshot
+from kriegspiel.snapshot import completed_moves_from_turn
+from kriegspiel.snapshot import move_stack_from_scoresheets
 
 # Import version from main module
 from kriegspiel import __version__
 
 LEGACY_SERIALIZATION_SCHEMA_VERSION = 2
-SERIALIZATION_SCHEMA_VERSION = 3
+PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 3
+SERIALIZATION_SCHEMA_VERSION = 4
 
 
 class SerializationError(Exception):
@@ -221,19 +228,20 @@ def deserialize_kriegspiel_answer(data: Dict[str, Any]) -> KriegspielAnswer:
 
 def serialize_kriegspiel_scoresheet(scoresheet: KriegspielScoresheet) -> Dict[str, Any]:
     """Serialize KriegspielScoresheet to dictionary."""
+    snapshot = scoresheet.snapshot()
     return {
-        "color": "WHITE" if scoresheet.color == chess.WHITE else "BLACK",
+        "color": "WHITE" if snapshot.color == chess.WHITE else "BLACK",
         "moves_own": [
             [(serialize_kriegspiel_move(move), serialize_kriegspiel_answer(answer)) 
              for move, answer in move_set]
-            for move_set in scoresheet.moves_own
+            for move_set in snapshot.moves_own
         ],
         "moves_opponent": [
             [(serialize_enum(question), serialize_kriegspiel_answer(answer))
              for question, answer in move_set]
-            for move_set in scoresheet.moves_opponent
+            for move_set in snapshot.moves_opponent
         ],
-        "last_move_number": scoresheet._KriegspielScoresheet__last_move_number
+        "last_move_number": snapshot.last_move_number
     }
 
 
@@ -241,43 +249,50 @@ def deserialize_kriegspiel_scoresheet(data: Dict[str, Any]) -> KriegspielScoresh
     """Deserialize dictionary to KriegspielScoresheet."""
     try:
         color = chess.WHITE if data["color"] == "WHITE" else chess.BLACK
-        scoresheet = KriegspielScoresheet(color)
-        
-        # Restore move history
-        scoresheet._KriegspielScoresheet__moves_own = [
-            [(deserialize_kriegspiel_move(move_data), deserialize_kriegspiel_answer(answer_data))
-             for move_data, answer_data in move_set]
-            for move_set in data["moves_own"]
-        ]
-        
-        scoresheet._KriegspielScoresheet__moves_opponent = [
-            [(deserialize_question_announcement(question_data), deserialize_kriegspiel_answer(answer_data))
-             for question_data, answer_data in move_set]
-            for move_set in data["moves_opponent"]
-        ]
-        
-        scoresheet._KriegspielScoresheet__last_move_number = data["last_move_number"]
-        
-        return scoresheet
+        snapshot = ScoresheetSnapshot(
+            color=color,
+            moves_own=tuple(
+                tuple(
+                    (deserialize_kriegspiel_move(move_data), deserialize_kriegspiel_answer(answer_data))
+                    for move_data, answer_data in move_set
+                )
+                for move_set in data["moves_own"]
+            ),
+            moves_opponent=tuple(
+                tuple(
+                    (deserialize_question_announcement(question_data), deserialize_kriegspiel_answer(answer_data))
+                    for question_data, answer_data in move_set
+                )
+                for move_set in data["moves_opponent"]
+            ),
+            last_move_number=data["last_move_number"],
+        )
+        return KriegspielScoresheet.from_snapshot(snapshot)
     except (KeyError, TypeError, ValueError) as e:
-        raise MalformedDataError(f"Invalid KriegspielScoresheet data") from e
+        raise MalformedDataError("Invalid KriegspielScoresheet data") from e
 
 
 def serialize_berkeley_game(game) -> Dict[str, Any]:
     """Serialize BerkeleyGame to dictionary."""
+    snapshot = game.snapshot()
     return {
         "schema_version": SERIALIZATION_SCHEMA_VERSION,
         "library_version": __version__,
         "game_type": "BerkeleyGame",
         "game_state": {
-            "any_rule": game._any_rule,
-            "board_fen": game._board.fen(),
-            "move_stack": [move.uci() for move in game._board.move_stack],
-            "must_use_pawns": game._must_use_pawns,
-            "game_over": game._game_over,
-            "possible_to_ask": serialize_possible_to_ask(game.possible_to_ask),
-            "white_scoresheet": serialize_kriegspiel_scoresheet(game._whites_scoresheet),
-            "black_scoresheet": serialize_kriegspiel_scoresheet(game._blacks_scoresheet)
+            "ruleset_id": snapshot.ruleset_id,
+            "any_rule": snapshot.any_rule,
+            "board_fen": snapshot.board_fen,
+            "move_stack": list(snapshot.move_stack),
+            "must_use_pawns": snapshot.must_use_pawns,
+            "game_over": snapshot.game_over,
+            "possible_to_ask": serialize_possible_to_ask(list(snapshot.possible_to_ask or ())),
+            "white_scoresheet": serialize_kriegspiel_scoresheet(
+                KriegspielScoresheet.from_snapshot(snapshot.white_scoresheet)
+            ),
+            "black_scoresheet": serialize_kriegspiel_scoresheet(
+                KriegspielScoresheet.from_snapshot(snapshot.black_scoresheet)
+            ),
         }
     }
 
@@ -289,102 +304,70 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         schema_version = data.get("schema_version")
         if schema_version is None:
             schema_version = LEGACY_SERIALIZATION_SCHEMA_VERSION if "version" in data else "unknown"
-        if schema_version not in {LEGACY_SERIALIZATION_SCHEMA_VERSION, SERIALIZATION_SCHEMA_VERSION}:
+        if schema_version not in {
+            LEGACY_SERIALIZATION_SCHEMA_VERSION,
+            PREVIOUS_SERIALIZATION_SCHEMA_VERSION,
+            SERIALIZATION_SCHEMA_VERSION,
+        }:
             raise UnsupportedVersionError(f"Unsupported schema_version: {schema_version}")
-        
+
         # Check game type
         game_type = data.get("game_type", "unknown")
         if game_type != "BerkeleyGame":
             raise MalformedDataError(f"Invalid game type: {game_type}. Expected: BerkeleyGame")
-        
+
         game_state = data["game_state"]
-        
-        # Import here to avoid circular import
-        from kriegspiel.berkeley import BerkeleyGame
-        
-        # Create new game instance
-        game = BerkeleyGame(any_rule=game_state["any_rule"])
-        
-        # Validate the stored FEN even when we can rebuild from move history.
-        try:
-            fen_board = chess.Board(game_state["board_fen"])
-        except ValueError as e:
-            raise MalformedDataError(f"Invalid board FEN: {game_state['board_fen']}") from e
 
         if "move_stack" not in game_state:
             raise MalformedDataError("Missing move_stack in BerkeleyGame data")
-
         move_stack = game_state["move_stack"]
         if not isinstance(move_stack, list):
             raise MalformedDataError("Invalid move_stack: expected a list of UCI moves")
+        for move_uci in move_stack:
+            if not isinstance(move_uci, str):
+                raise MalformedDataError(f"Invalid move_stack entry: {move_uci}")
 
-        board = chess.Board()
-        try:
-            for move_uci in move_stack:
-                if not isinstance(move_uci, str):
-                    raise MalformedDataError(f"Invalid move_stack entry: {move_uci}")
-                board.push_uci(move_uci)
-        except ValueError as e:
-            raise MalformedDataError(f"Invalid move_stack entry: {move_uci}") from e
+        ruleset_id = game_state.get("ruleset_id")
+        any_rule = game_state["any_rule"]
+        if ruleset_id is None:
+            ruleset_id = "berkeley_any" if any_rule else "berkeley"
 
-        if board.fen() != game_state["board_fen"]:
-            raise MalformedDataError("Serialized move_stack does not match board_fen")
-        game._board = board
-            
-        game._must_use_pawns = game_state["must_use_pawns"]
-        game._game_over = game_state["game_over"]
-        
-        # Restore scoresheets
-        game._whites_scoresheet = deserialize_kriegspiel_scoresheet(game_state["white_scoresheet"])
-        game._blacks_scoresheet = deserialize_kriegspiel_scoresheet(game_state["black_scoresheet"])
-
-        scoresheet_move_stack = _move_stack_from_scoresheets(game._whites_scoresheet, game._blacks_scoresheet)
-        if scoresheet_move_stack != move_stack:
-            raise MalformedDataError("Scoresheet-derived moves do not match move_stack")
-
-        if schema_version == SERIALIZATION_SCHEMA_VERSION:
+        possible_to_ask = None
+        if schema_version in {PREVIOUS_SERIALIZATION_SCHEMA_VERSION, SERIALIZATION_SCHEMA_VERSION}:
             if "possible_to_ask" not in game_state:
                 raise MalformedDataError("Missing possible_to_ask in BerkeleyGame data")
-            game._set_possible_to_ask(deserialize_possible_to_ask(game_state["possible_to_ask"]))
-        else:
-            # Legacy saved payloads did not preserve exact turn-state questions.
-            game._generate_possible_to_ask_list()
-            if game._must_use_pawns:
-                game._set_possible_to_ask(game._generate_possible_pawn_captures())
-        
-        return game
+            possible_to_ask = tuple(deserialize_possible_to_ask(game_state["possible_to_ask"]))
+
+        snapshot = BerkeleyGameSnapshot(
+            ruleset_id=ruleset_id,
+            any_rule=any_rule,
+            board_fen=game_state["board_fen"],
+            move_stack=tuple(move_stack),
+            must_use_pawns=game_state["must_use_pawns"],
+            game_over=game_state["game_over"],
+            possible_to_ask=possible_to_ask,
+            white_scoresheet=deserialize_kriegspiel_scoresheet(game_state["white_scoresheet"]).snapshot(),
+            black_scoresheet=deserialize_kriegspiel_scoresheet(game_state["black_scoresheet"]).snapshot(),
+        )
+
+        # Import here to avoid circular import
+        from kriegspiel.berkeley import BerkeleyGame
+
+        return BerkeleyGame.from_snapshot(snapshot)
+    except UnsupportedVersionError:
+        raise
+    except ValueError as e:
+        raise MalformedDataError(str(e)) from e
     except (KeyError, TypeError) as e:
-        raise MalformedDataError(f"Invalid BerkeleyGame data structure") from e
+        raise MalformedDataError("Invalid BerkeleyGame data structure") from e
 
 
-def _move_stack_from_scoresheets(white_scoresheet: KriegspielScoresheet, black_scoresheet: KriegspielScoresheet) -> List[str]:
-    """Extract the executed chess moves recorded in both players' own scoresheets."""
-    extracted: List[str] = []
-    max_turns = max(len(white_scoresheet.moves_own), len(black_scoresheet.moves_own))
-
-    for turn_index in range(max_turns):
-        if turn_index < len(white_scoresheet.moves_own):
-            extracted.extend(_completed_moves_from_turn(white_scoresheet.moves_own[turn_index]))
-        if turn_index < len(black_scoresheet.moves_own):
-            extracted.extend(_completed_moves_from_turn(black_scoresheet.moves_own[turn_index]))
-
-    return extracted
-
-
-def _completed_moves_from_turn(turn: List[Tuple[KriegspielMove, KriegspielAnswer]]) -> List[str]:
-    """Return UCI moves for successful COMMON questions within a single turn."""
-    completed_moves: List[str] = []
-    for move, answer in turn:
-        if move.question_type != QuestionAnnouncement.COMMON or not answer.move_done:
-            continue
-        if move.chess_move is None:
-            raise MalformedDataError("Scoresheet move is missing chess_move")
-        completed_moves.append(move.chess_move.uci())
-
-    if len(completed_moves) > 1:
-        raise MalformedDataError("Scoresheet turn contains multiple completed moves")
-
-    return completed_moves
+def _completed_moves_from_turn(turn):
+    """Backward-compatible helper used by the serialization tests."""
+    try:
+        return list(completed_moves_from_turn(tuple(turn)))
+    except ValueError as e:
+        raise MalformedDataError(str(e)) from e
 
 
 def save_game_to_json(game, filename: str) -> None:
