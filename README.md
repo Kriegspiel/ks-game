@@ -7,6 +7,7 @@ Python game engine for hidden-information Kriegspiel referee rules.
 Current scope:
 - Berkeley Kriegspiel
 - Berkeley + Any
+- Cincinnati
 - Wild 16
 
 The package models the referee, not a UI. You interact with it by asking questions as `KriegspielMove` objects and reading `KriegspielAnswer` results.
@@ -43,10 +44,13 @@ loaded = KriegspielGame.load_game("game.json")
 still use `BerkeleyGame` explicitly as a compatibility wrapper, or pick a ruleset
 with `ruleset=...`.
 
-Wild 16 also has its own convenience entrypoint:
+Cincinnati and Wild 16 also have their own convenience entrypoints:
 
 ```python
-from kriegspiel import Wild16Game
+from kriegspiel import CincinnatiGame, Wild16Game
+
+cincinnati = CincinnatiGame()
+print(cincinnati.current_turn_has_pawn_capture)
 
 wild16 = Wild16Game()
 print(wild16.current_turn_pawn_tries)
@@ -56,6 +60,7 @@ print(wild16.current_turn_pawn_tries)
 
 - `KriegspielGame`: the neutral public entrypoint for the shared hidden-board engine
 - `BerkeleyGame`: backward-compatible Berkeley-named wrapper over `KriegspielGame`
+- `CincinnatiGame`: Cincinnati convenience entrypoint with public `NONSENSE` and binary pawn-capture announcements
 - `Wild16Game`: Wild 16 convenience entrypoint over the shared hidden-board engine
 - `KriegspielMove`: a player question, either a normal move or `ASK_ANY`
 - `KriegspielAnswer`: the referee response, including move outcome, captures, special announcements, and variant-specific public metadata

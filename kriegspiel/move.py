@@ -159,7 +159,7 @@ class KriegspielMove(object):
 @enum.unique
 class MainAnnouncement(enum.Enum):
     """
-    There are 6 valid options for how to respond to Question Announcement
+    There are 7 valid options for how to respond to Question Announcement
     in the Kriegspiel game.
 
     Four of them are for the Common Question type:
@@ -171,7 +171,9 @@ class MainAnnouncement(enum.Enum):
         but it is unknown to the player who asks. That is new information
         for the players.
     3. REGULAR_MOVE — a move is valid and immediately done. No capture happened.
-    4. REGULAR_MOVE — a move is valid and immediately done. Capture happened.
+    4. CAPTURE_DONE — a move is valid and immediately done. Capture happened.
+    5. NONSENSE — a move is impossible from the player's own information and
+        should already be known to be impossible.
 
     And there are two responses, that are special from ASK_ANY type of
     Question announcement:
@@ -190,6 +192,7 @@ class MainAnnouncement(enum.Enum):
 
     HAS_ANY = 4
     NO_ANY = 5
+    NONSENSE = 6
 
 
 # There are two types of Main Announcements that correspond to MOVE_DONE.
@@ -268,6 +271,8 @@ class KriegspielAnswer(object):
                                     For CHECK_DOUBLE, provide (CHECK_DOUBLE, [check1, check2]).
                 next_turn_pawn_tries (int): Optional Wild 16 style count of legal pawn
                                     captures available for the next player to move.
+                next_turn_has_pawn_capture (bool): Optional Cincinnati-style binary
+                                    pawn-capture announcement for the next player to move.
         
         Raises:
             TypeError: If main_announcement is not a MainAnnouncement enum value,
@@ -289,6 +294,7 @@ class KriegspielAnswer(object):
         self._check_1 = None
         self._check_2 = None
         self._next_turn_pawn_tries = None
+        self._next_turn_has_pawn_capture = None
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             # Validation, that when capture is done, then valid square should
@@ -341,6 +347,15 @@ class KriegspielAnswer(object):
             if next_turn_pawn_tries < 0:
                 raise ValueError("next_turn_pawn_tries must be non-negative")
             self._next_turn_pawn_tries = next_turn_pawn_tries
+
+        if "next_turn_has_pawn_capture" in kwargs:
+            next_turn_has_pawn_capture = kwargs["next_turn_has_pawn_capture"]
+            if not isinstance(next_turn_has_pawn_capture, bool):
+                raise TypeError("next_turn_has_pawn_capture must be a boolean")
+            self._next_turn_has_pawn_capture = next_turn_has_pawn_capture
+
+        if self._next_turn_pawn_tries is not None and self._next_turn_has_pawn_capture is not None:
+            raise ValueError("Use either next_turn_pawn_tries or next_turn_has_pawn_capture, not both")
 
         if self._main_announcement in MOVE_DONE:
             self._move_done = True
@@ -409,6 +424,16 @@ class KriegspielAnswer(object):
         return self._next_turn_pawn_tries
 
     @property
+    def next_turn_has_pawn_capture(self):
+        """
+        Get the next player's binary pawn-capture announcement when the ruleset exposes it.
+
+        Returns:
+            bool or None: Cincinnati-style pawn-capture availability for the next player.
+        """
+        return self._next_turn_has_pawn_capture
+
+    @property
     def check_1(self):
         """
         Get the first check type in a double check situation.
@@ -448,6 +473,8 @@ class KriegspielAnswer(object):
             f"special_case={self._special_announcement}",
             f"next_turn_pawn_tries={self._next_turn_pawn_tries}",
         ]
+        if self._next_turn_has_pawn_capture is not None:
+            main_data.append(f"next_turn_has_pawn_capture={self._next_turn_has_pawn_capture}")
 
         if self._check_1 is not None or self._check_2 is not None:
             extra_data = f"check_1={self._check_1}, check_2={self._check_2}"
@@ -462,6 +489,7 @@ class KriegspielAnswer(object):
             self._captured_piece_announcement,
             self._special_announcement,
             self._next_turn_pawn_tries,
+            self._next_turn_has_pawn_capture,
             self._check_1,
             self._check_2,
         )
@@ -473,6 +501,7 @@ class KriegspielAnswer(object):
             self._captured_piece_announcement.value if self._captured_piece_announcement is not None else -1,
             self._special_announcement.value,
             self._next_turn_pawn_tries if self._next_turn_pawn_tries is not None else -1,
+            -1 if self._next_turn_has_pawn_capture is None else int(self._next_turn_has_pawn_capture),
             self._check_1.value if self._check_1 is not None else -1,
             self._check_2.value if self._check_2 is not None else -1,
         )

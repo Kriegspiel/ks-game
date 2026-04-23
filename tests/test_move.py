@@ -243,6 +243,24 @@ def test_next_turn_pawn_tries_validation():
         KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_tries=-1)
 
 
+def test_next_turn_has_pawn_capture_validation():
+    answer = KSAnswer(MA.REGULAR_MOVE, next_turn_has_pawn_capture=True)
+
+    assert answer.next_turn_has_pawn_capture is True
+
+    with pytest.raises(TypeError, match="next_turn_has_pawn_capture must be a boolean"):
+        KSAnswer(MA.REGULAR_MOVE, next_turn_has_pawn_capture="yes")
+
+
+def test_next_turn_pawn_capture_metadata_is_mutually_exclusive():
+    with pytest.raises(ValueError, match="Use either next_turn_pawn_tries or next_turn_has_pawn_capture"):
+        KSAnswer(
+            MA.REGULAR_MOVE,
+            next_turn_pawn_tries=1,
+            next_turn_has_pawn_capture=True,
+        )
+
+
 @pytest.mark.unit
 def test_capture_square_range_validation():
     """Test that capture squares must be within valid range (0-63)."""
@@ -369,6 +387,19 @@ def test_ksanswer_str_with_capture_payload_and_no_double_check():
         "<KriegspielAnswer: MainAnnouncement.CAPTURE_DONE, "
         "capture_at=e4, captured_piece=CapturedPieceAnnouncement.PAWN, "
         "special_case=SpecialCaseAnnouncement.NONE, next_turn_pawn_tries=None>"
+    )
+
+
+def test_ksanswer_str_with_cincinnati_pawn_capture_payload():
+    answer = KSAnswer(
+        MA.REGULAR_MOVE,
+        next_turn_has_pawn_capture=True,
+    )
+
+    assert str(answer) == (
+        "<KriegspielAnswer: MainAnnouncement.REGULAR_MOVE, "
+        "capture_at=None, captured_piece=None, special_case=SpecialCaseAnnouncement.NONE, "
+        "next_turn_pawn_tries=None, next_turn_has_pawn_capture=True>"
     )
 
 

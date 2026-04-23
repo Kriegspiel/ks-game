@@ -23,9 +23,10 @@ class KriegspielGame(object):
     """
     Shared hidden-board Kriegspiel referee engine.
 
-    Ruleset-specific behavior such as Berkeley `ASK_ANY` handling or Wild 16
-    pawn-try announcements is delegated to a policy layer. Variant-named
-    wrappers like `BerkeleyGame` and `Wild16Game` build on this class.
+    Ruleset-specific behavior such as Berkeley `ASK_ANY`, Cincinnati binary
+    pawn-capture announcements, or Wild 16 pawn-try counts is delegated to a
+    policy layer. Variant-named wrappers like `BerkeleyGame`, `CincinnatiGame`,
+    and `Wild16Game` build on this class.
 
     Communication with this class must be in the form of questions —
     KriegspielMove(s) with QuestionAnnouncement(s).
@@ -42,7 +43,7 @@ class KriegspielGame(object):
             any_rule: Legacy compatibility flag for Berkeley+Any. When omitted,
                      Berkeley+Any remains the default.
             ruleset: Explicit ruleset identifier. Supported values are
-                     `berkeley`, `berkeley_any`, and `wild16`.
+                     `berkeley`, `berkeley_any`, `cincinnati`, and `wild16`.
         """
         super().__init__()
         self._ruleset = resolve_ruleset_policy(ruleset=ruleset, any_rule=any_rule)
@@ -111,9 +112,12 @@ class KriegspielGame(object):
                 captured_square, captured_piece_announcement = self._make_move(move.chess_move)
                 special_case = self._check_special_cases()
                 next_turn_pawn_tries = self._ruleset.next_turn_pawn_tries(self)
+                next_turn_has_pawn_capture = self._ruleset.next_turn_has_pawn_capture(self)
                 answer_kwargs = {"special_announcement": special_case}
                 if next_turn_pawn_tries is not None:
                     answer_kwargs["next_turn_pawn_tries"] = next_turn_pawn_tries
+                if next_turn_has_pawn_capture is not None:
+                    answer_kwargs["next_turn_has_pawn_capture"] = next_turn_has_pawn_capture
                 if captured_square is not None:
                     # If it was capture
                     answer_kwargs["capture_at_square"] = captured_square
@@ -471,6 +475,16 @@ class KriegspielGame(object):
             int or None: Legal pawn-capture count when the active ruleset announces it.
         """
         return self._ruleset.next_turn_pawn_tries(self)
+
+    @property
+    def current_turn_has_pawn_capture(self):
+        """
+        Get the Cincinnati-style binary pawn-capture announcement for the player to move.
+
+        Returns:
+            bool or None: Pawn-capture availability when the active ruleset announces it.
+        """
+        return self._ruleset.next_turn_has_pawn_capture(self)
 
     @property
     def must_use_pawns(self):

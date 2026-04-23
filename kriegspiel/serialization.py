@@ -8,8 +8,8 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 
 JSON Schema Structure:
 {
-  "schema_version": 5,
-  "library_version": "1.3.3",
+  "schema_version": 6,
+  "library_version": "1.4.0",
   "game_type": "BerkeleyGame",
   "game_state": {
     "ruleset_id": "berkeley_any",
@@ -48,6 +48,7 @@ moves_own/moves_opponent: [
         "captured_piece_announcement": "PAWN" | "PIECE" | null,
         "special_announcement": "NONE" | "CHECK_RANK" | ...,
         "next_turn_pawn_tries": int | null,
+        "next_turn_has_pawn_capture": bool | null,
         "check_1": "CHECK_RANK" | null,  // For double check
         "check_2": "CHECK_FILE" | null   // For double check
       }
@@ -74,8 +75,9 @@ from kriegspiel.snapshot import move_stack_from_scoresheets
 from kriegspiel import __version__
 
 LEGACY_SERIALIZATION_SCHEMA_VERSION = 3
-PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 4
-SERIALIZATION_SCHEMA_VERSION = 5
+INTERMEDIATE_SERIALIZATION_SCHEMA_VERSION = 4
+PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 5
+SERIALIZATION_SCHEMA_VERSION = 6
 
 
 class SerializationError(Exception):
@@ -207,7 +209,7 @@ def deserialize_possible_to_ask(data: Any) -> List[KriegspielMove]:
 
 def serialize_kriegspiel_answer(answer: KriegspielAnswer) -> Dict[str, Any]:
     """Serialize KriegspielAnswer to dictionary."""
-    return {
+    result = {
         "main_announcement": serialize_enum(answer.main_announcement),
         "capture_at_square": answer.capture_at_square,
         "captured_piece_announcement": (
@@ -220,6 +222,9 @@ def serialize_kriegspiel_answer(answer: KriegspielAnswer) -> Dict[str, Any]:
         "check_1": serialize_enum(answer.check_1) if answer.check_1 is not None else None,
         "check_2": serialize_enum(answer.check_2) if answer.check_2 is not None else None
     }
+    if answer.next_turn_has_pawn_capture is not None:
+        result["next_turn_has_pawn_capture"] = answer.next_turn_has_pawn_capture
+    return result
 
 
 def deserialize_kriegspiel_answer(data: Dict[str, Any]) -> KriegspielAnswer:
@@ -238,6 +243,8 @@ def deserialize_kriegspiel_answer(data: Dict[str, Any]) -> KriegspielAnswer:
             )
         if data.get("next_turn_pawn_tries") is not None:
             kwargs["next_turn_pawn_tries"] = data["next_turn_pawn_tries"]
+        if data.get("next_turn_has_pawn_capture") is not None:
+            kwargs["next_turn_has_pawn_capture"] = data["next_turn_has_pawn_capture"]
         
         special_announcement = deserialize_special_case_announcement(data["special_announcement"])
         
@@ -335,6 +342,7 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
             raise UnsupportedVersionError("Missing schema_version")
         if schema_version not in {
             LEGACY_SERIALIZATION_SCHEMA_VERSION,
+            INTERMEDIATE_SERIALIZATION_SCHEMA_VERSION,
             PREVIOUS_SERIALIZATION_SCHEMA_VERSION,
             SERIALIZATION_SCHEMA_VERSION,
         }:

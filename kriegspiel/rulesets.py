@@ -1,4 +1,4 @@
-"""Ruleset policies for Berkeley-family hidden-information chess."""
+"""Ruleset policies for hidden-information Kriegspiel variants."""
 
 from __future__ import annotations
 
@@ -15,17 +15,18 @@ from kriegspiel.move import QuestionAnnouncement as QA
 
 RULESET_BERKELEY = "berkeley"
 RULESET_BERKELEY_ANY = "berkeley_any"
+RULESET_CINCINNATI = "cincinnati"
 RULESET_WILD16 = "wild16"
 
 
 @dataclass(frozen=True)
 class BerkeleyRulesetPolicy:
-    """Policy layer for Berkeley-family rulesets.
+    """Policy layer for shared Kriegspiel rulesets.
 
     The hidden-board move engine is shared, while this policy decides
     which referee-only questions exist and how those questions constrain
     the next prompt. This keeps the current Berkeley behavior intact while
-    making future Cincinnati / Wild 16 variants easier to add.
+    making Cincinnati / Wild 16 style variants easier to add.
     """
 
     identifier: str
@@ -35,6 +36,7 @@ class BerkeleyRulesetPolicy:
     public_illegal_attempts: bool
     typed_capture_announcements: bool
     announce_next_turn_pawn_tries: bool
+    announce_next_turn_has_pawn_capture: bool
 
     def add_special_questions(self, possibilities: set[KSMove]) -> None:
         if self.allow_ask_any:
@@ -87,6 +89,11 @@ class BerkeleyRulesetPolicy:
             return None
         return game._count_legal_pawn_captures()
 
+    def next_turn_has_pawn_capture(self, game) -> bool | None:
+        if not self.announce_next_turn_has_pawn_capture or game.game_over:
+            return None
+        return game._has_any_pawn_captures()
+
 
 def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None = None) -> BerkeleyRulesetPolicy:
     """Resolve legacy `any_rule` calls into an explicit ruleset policy."""
@@ -109,6 +116,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             public_illegal_attempts=True,
             typed_capture_announcements=False,
             announce_next_turn_pawn_tries=False,
+            announce_next_turn_has_pawn_capture=False,
         )
     if ruleset == RULESET_BERKELEY:
         return BerkeleyRulesetPolicy(
@@ -119,6 +127,18 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             public_illegal_attempts=True,
             typed_capture_announcements=False,
             announce_next_turn_pawn_tries=False,
+            announce_next_turn_has_pawn_capture=False,
+        )
+    if ruleset == RULESET_CINCINNATI:
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=False,
+            invalid_common_attempt_result=MA.NONSENSE,
+            discard_illegal_attempts=True,
+            public_illegal_attempts=True,
+            typed_capture_announcements=True,
+            announce_next_turn_pawn_tries=False,
+            announce_next_turn_has_pawn_capture=True,
         )
     if ruleset == RULESET_WILD16:
         return BerkeleyRulesetPolicy(
@@ -129,5 +149,6 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             public_illegal_attempts=False,
             typed_capture_announcements=True,
             announce_next_turn_pawn_tries=True,
+            announce_next_turn_has_pawn_capture=False,
         )
     raise ValueError(f"Unsupported ruleset: {ruleset!r}")

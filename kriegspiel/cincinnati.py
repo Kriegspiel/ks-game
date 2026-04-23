@@ -1,28 +1,28 @@
 # -*- coding: utf-8 -*-
 
-"""Convenience entrypoint for the Wild 16 Kriegspiel ruleset."""
+"""Convenience entrypoint for the Cincinnati Kriegspiel ruleset."""
 
 from __future__ import annotations
 
 from kriegspiel.game import KriegspielGame
 from kriegspiel.move import KriegspielScoresheet as KSSS
-from kriegspiel.rulesets import RULESET_WILD16
+from kriegspiel.rulesets import RULESET_CINCINNATI
 from kriegspiel.serialization import load_game_from_json
 
 
-class Wild16Game(KriegspielGame):
-    """Wild 16 convenience wrapper over the shared hidden-board engine."""
+class CincinnatiGame(KriegspielGame):
+    """Cincinnati convenience wrapper over the shared hidden-board engine."""
 
     def __init__(self):
-        super().__init__(ruleset=RULESET_WILD16)
+        super().__init__(ruleset=RULESET_CINCINNATI)
 
     @classmethod
     def _from_kriegspiel_game(cls, game):
-        """Rebuild a Wild16Game wrapper from a validated shared-engine instance."""
+        """Rebuild a CincinnatiGame wrapper from a validated shared-engine instance."""
         if not isinstance(game, KriegspielGame):
             raise TypeError("game must be a KriegspielGame")
-        if game.ruleset_id != RULESET_WILD16:
-            raise ValueError("game must use the wild16 ruleset")
+        if game.ruleset_id != RULESET_CINCINNATI:
+            raise ValueError("game must use the cincinnati ruleset")
 
         instance = cls()
         instance._board = game._board.copy(stack=True)
@@ -34,14 +34,12 @@ class Wild16Game(KriegspielGame):
         instance._blacks_scoresheet = KSSS.from_snapshot(game._blacks_scoresheet.snapshot())
         return instance
 
-    _from_berkeley_game = _from_kriegspiel_game
-
     @classmethod
     def from_snapshot(cls, snapshot):
-        """Build a Wild16Game from a validated snapshot."""
+        """Build a CincinnatiGame from a validated snapshot."""
         return cls._from_kriegspiel_game(KriegspielGame.from_snapshot(snapshot))
 
     @classmethod
     def load_game(cls, filename):
-        """Load a Wild 16 game from disk."""
+        """Load a Cincinnati game from disk."""
         return cls._from_kriegspiel_game(load_game_from_json(filename))
