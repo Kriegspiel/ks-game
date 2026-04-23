@@ -345,12 +345,12 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         if schema_version == SERIALIZATION_SCHEMA_VERSION:
             if "possible_to_ask" not in game_state:
                 raise MalformedDataError("Missing possible_to_ask in BerkeleyGame data")
-            game._possible_to_ask = deserialize_possible_to_ask(game_state["possible_to_ask"])
+            game._set_possible_to_ask(deserialize_possible_to_ask(game_state["possible_to_ask"]))
         else:
             # Legacy saved payloads did not preserve exact turn-state questions.
             game._generate_possible_to_ask_list()
             if game._must_use_pawns:
-                game._possible_to_ask = list(game._generate_possible_pawn_captures())
+                game._set_possible_to_ask(game._generate_possible_pawn_captures())
         
         return game
     except (KeyError, TypeError) as e:

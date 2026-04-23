@@ -77,6 +77,11 @@ def test_ask_any_never_collides_with_common_moves():
     assert len({ask_any, common}) == 2
 
 
+def test_move_lt_nonmove_returns_notimplemented():
+    move = KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4))
+    assert move.__lt__("not-a-move") is NotImplemented
+
+
 @pytest.mark.unit
 def test_incorrect_answer_type():
     with pytest.raises(TypeError):
@@ -265,6 +270,25 @@ def test_answers_with_distinct_payloads_stay_distinct():
     assert capture != regular
     assert regular != file_check
     assert len({capture, regular, file_check}) == 3
+
+
+def test_answer_lt_nonanswer_returns_notimplemented():
+    answer = KSAnswer(MA.REGULAR_MOVE)
+    assert answer.__lt__("not-an-answer") is NotImplemented
+
+
+def test_ksanswer_str_with_double_check_payload():
+    answer = KSAnswer(
+        MA.REGULAR_MOVE,
+        special_announcement=(SCA.CHECK_DOUBLE, [SCA.CHECK_FILE, SCA.CHECK_KNIGHT]),
+    )
+
+    assert str(answer) == (
+        "<KriegspielAnswer: MainAnnouncement.REGULAR_MOVE, "
+        "capture_at=None, special_case=SpecialCaseAnnouncement.CHECK_DOUBLE, "
+        "check_1=SpecialCaseAnnouncement.CHECK_FILE, "
+        "check_2=SpecialCaseAnnouncement.CHECK_KNIGHT>"
+    )
 
 
 @pytest.mark.unit

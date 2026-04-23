@@ -782,6 +782,16 @@ def test_castling_rights_control_possible_to_ask_membership():
     assert KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1)) not in g.possible_to_ask
 
 
+def test_discard_possible_to_ask_is_noop_for_absent_move():
+    g = BerkeleyGame()
+    impossible = KSMove(QA.COMMON, chess.Move(chess.E2, chess.E1))
+    before = set(g.possible_to_ask)
+
+    g._discard_possible_to_ask(impossible)
+
+    assert set(g.possible_to_ask) == before
+
+
 def test_initial_game_is_not_over():
     g = BerkeleyGame()
     assert g.game_over == False

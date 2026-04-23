@@ -1,5 +1,11 @@
 # Release Notes
 
+## Kriegspiel v. 1.2.4
+
+- **Move Identity**: `KriegspielMove` and `KriegspielAnswer` now use structured equality, ordering, and hashing instead of string-based identity
+- **Performance**: Berkeley ask-generation now keeps a membership set and uses a lighter-weight visible-board / pawn-capture path
+- **Benchmarks**: added a reusable move-generation benchmark helper and strengthened performance regression coverage
+
 ## Kriegspiel v. 1.2.3
 
 - **Canonical Engine State**: `BerkeleyGame` serialization now stores `possible_to_ask`, so active turns can be resumed without losing question-state
