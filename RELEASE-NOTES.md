@@ -1,5 +1,10 @@
 # Release Notes
 
+## Kriegspiel v. 1.3.1
+
+- **Wild 16 Entry Point**: added `kriegspiel.wild16.Wild16Game` as a dedicated convenience wrapper over the shared hidden-board engine
+- **Test Organization**: moved Wild 16 engine behavior checks into a dedicated `tests/test_wild16.py` file so Berkeley and Wild 16 coverage are easier to navigate separately
+
 ## Kriegspiel v. 1.3.0
 
 - **Wild 16 Support**: added first-class `wild16` ruleset handling, including typed pawn-vs-piece capture announcements, Wild 16 pawn-try counts, and private illegal-attempt behavior

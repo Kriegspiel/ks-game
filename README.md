@@ -40,16 +40,19 @@ game.save_game("game.json")
 loaded = BerkeleyGame.load_game("game.json")
 ```
 
-Wild 16 uses the same engine with an explicit ruleset:
+Wild 16 now has its own convenience entrypoint:
 
 ```python
-wild16 = BerkeleyGame(ruleset="wild16")
+from kriegspiel.wild16 import Wild16Game
+
+wild16 = Wild16Game()
 print(wild16.current_turn_pawn_tries)
 ```
 
 ## Main Concepts
 
 - `BerkeleyGame`: the referee and full hidden board state
+- `Wild16Game`: Wild 16 convenience entrypoint over the shared hidden-board engine
 - `KriegspielMove`: a player question, either a normal move or `ASK_ANY`
 - `KriegspielAnswer`: the referee response, including move outcome, captures, special announcements, and variant-specific public metadata
 
