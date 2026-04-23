@@ -9,7 +9,7 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 JSON Schema Structure:
 {
   "schema_version": 5,
-  "library_version": "1.3.2",
+  "library_version": "1.3.3",
   "game_type": "BerkeleyGame",
   "game_state": {
     "ruleset_id": "berkeley_any",
@@ -65,7 +65,7 @@ from kriegspiel.move import (
     QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement, CapturedPieceAnnouncement,
     KriegspielMove, KriegspielAnswer, KriegspielScoresheet
 )
-from kriegspiel.snapshot import BerkeleyGameSnapshot
+from kriegspiel.snapshot import KriegspielGameSnapshot
 from kriegspiel.snapshot import ScoresheetSnapshot
 from kriegspiel.snapshot import completed_moves_from_turn
 from kriegspiel.snapshot import move_stack_from_scoresheets
@@ -108,7 +108,7 @@ class KriegspielJSONEncoder(json.JSONEncoder):
             return serialize_kriegspiel_answer(obj)
         elif isinstance(obj, KriegspielScoresheet):
             return serialize_kriegspiel_scoresheet(obj)
-        elif obj.__class__.__name__ == 'BerkeleyGame':
+        elif hasattr(obj, "snapshot") and hasattr(obj, "ruleset_id"):
             return serialize_berkeley_game(obj)
         else:
             return super().default(obj)
@@ -302,7 +302,7 @@ def deserialize_kriegspiel_scoresheet(data: Dict[str, Any]) -> KriegspielScoresh
 
 
 def serialize_berkeley_game(game) -> Dict[str, Any]:
-    """Serialize BerkeleyGame to dictionary."""
+    """Serialize a shared Kriegspiel game to dictionary."""
     snapshot = game.snapshot()
     return {
         "schema_version": SERIALIZATION_SCHEMA_VERSION,
@@ -327,7 +327,7 @@ def serialize_berkeley_game(game) -> Dict[str, Any]:
 
 
 def deserialize_berkeley_game(data: Dict[str, Any]):
-    """Deserialize dictionary to BerkeleyGame."""
+    """Deserialize dictionary to a shared KriegspielGame instance."""
     try:
         # Check schema compatibility. Live data uses schema 3/4; new writes use schema 5.
         schema_version = data.get("schema_version")
@@ -365,7 +365,7 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
             raise MalformedDataError("Missing possible_to_ask in BerkeleyGame data")
         possible_to_ask = tuple(deserialize_possible_to_ask(game_state["possible_to_ask"]))
 
-        snapshot = BerkeleyGameSnapshot(
+        snapshot = KriegspielGameSnapshot(
             ruleset_id=ruleset_id,
             any_rule=any_rule,
             board_fen=game_state["board_fen"],
@@ -378,9 +378,9 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         )
 
         # Import here to avoid circular import
-        from kriegspiel.berkeley import BerkeleyGame
+        from kriegspiel.game import KriegspielGame
 
-        return BerkeleyGame.from_snapshot(snapshot)
+        return KriegspielGame.from_snapshot(snapshot)
     except UnsupportedVersionError:
         raise
     except ValueError as e:
@@ -398,7 +398,7 @@ def _completed_moves_from_turn(turn):
 
 
 def save_game_to_json(game, filename: str) -> None:
-    """Save BerkeleyGame to JSON file."""
+    """Save a shared Kriegspiel game to a JSON file."""
     try:
         data = serialize_berkeley_game(game)
         with open(filename, 'w') as f:
@@ -408,7 +408,7 @@ def save_game_to_json(game, filename: str) -> None:
 
 
 def load_game_from_json(filename: str):
-    """Load BerkeleyGame from JSON file."""
+    """Load a shared Kriegspiel game from JSON file."""
     try:
         with open(filename, 'r') as f:
             data = json.load(f)
@@ -417,3 +417,7 @@ def load_game_from_json(filename: str):
         raise SerializationError(f"Failed to load game from {filename}") from e
     except json.JSONDecodeError as e:
         raise MalformedDataError(f"Invalid JSON in file {filename}") from e
+
+
+serialize_kriegspiel_game = serialize_berkeley_game
+deserialize_kriegspiel_game = deserialize_berkeley_game

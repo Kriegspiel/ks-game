@@ -28,8 +28,8 @@ class ScoresheetSnapshot:
 
 
 @dataclass(frozen=True)
-class BerkeleyGameSnapshot:
-    """Serializable, public view of a Berkeley-family hidden-board game."""
+class KriegspielGameSnapshot:
+    """Serializable, public view of a hidden-board Kriegspiel game."""
 
     ruleset_id: str
     any_rule: bool
@@ -40,6 +40,10 @@ class BerkeleyGameSnapshot:
     possible_to_ask: Optional[Tuple[KriegspielMove, ...]]
     white_scoresheet: ScoresheetSnapshot
     black_scoresheet: ScoresheetSnapshot
+
+
+# Backward-compatible alias for older Berkeley-named APIs.
+BerkeleyGameSnapshot = KriegspielGameSnapshot
 
 
 def completed_moves_from_turn(turn: MoveTurn) -> Tuple[str, ...]:

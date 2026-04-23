@@ -40,7 +40,8 @@ loaded = KriegspielGame.load_game("game.json")
 ```
 
 `KriegspielGame()` defaults to Berkeley + Any for backward compatibility. You can
-still use `BerkeleyGame` explicitly, or pick a ruleset with `ruleset=...`.
+still use `BerkeleyGame` explicitly as a compatibility wrapper, or pick a ruleset
+with `ruleset=...`.
 
 Wild 16 also has its own convenience entrypoint:
 
@@ -54,7 +55,7 @@ print(wild16.current_turn_pawn_tries)
 ## Main Concepts
 
 - `KriegspielGame`: the neutral public entrypoint for the shared hidden-board engine
-- `BerkeleyGame`: backward-compatible Berkeley-named entrypoint for the same engine
+- `BerkeleyGame`: backward-compatible Berkeley-named wrapper over `KriegspielGame`
 - `Wild16Game`: Wild 16 convenience entrypoint over the shared hidden-board engine
 - `KriegspielMove`: a player question, either a normal move or `ASK_ANY`
 - `KriegspielAnswer`: the referee response, including move outcome, captures, special announcements, and variant-specific public metadata

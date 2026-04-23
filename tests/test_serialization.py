@@ -19,6 +19,7 @@ from kriegspiel.serialization import (
     serialize_kriegspiel_move, deserialize_kriegspiel_move,
     serialize_kriegspiel_answer, deserialize_kriegspiel_answer,
     serialize_kriegspiel_scoresheet, deserialize_kriegspiel_scoresheet,
+    serialize_kriegspiel_game, deserialize_kriegspiel_game,
     serialize_berkeley_game, deserialize_berkeley_game,
     save_game_to_json, load_game_from_json,
     KriegspielJSONEncoder, SERIALIZATION_SCHEMA_VERSION, _completed_moves_from_turn,
@@ -677,6 +678,12 @@ class TestEdgeCases:
         deserialized = deserialize_berkeley_game(result)
         assert deserialized._any_rule is False
         assert deserialized.ruleset_id == RULESET_BERKELEY
+
+    def test_generic_serialization_aliases_match_legacy_names(self):
+        game = BerkeleyGame(any_rule=False)
+
+        assert serialize_kriegspiel_game(game) == serialize_berkeley_game(game)
+        assert deserialize_kriegspiel_game(serialize_kriegspiel_game(game))._board.fen() == game._board.fen()
 
     def test_deserialize_previous_schema_without_ruleset_id(self):
         game = BerkeleyGame(any_rule=True)

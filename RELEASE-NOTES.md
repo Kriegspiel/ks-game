@@ -1,5 +1,11 @@
 # Release Notes
 
+## Kriegspiel v. 1.3.3
+
+- **API Ownership**: moved the shared engine implementation into `kriegspiel.game.KriegspielGame`, with `BerkeleyGame` now acting as the backward-compatible wrapper instead of the other way around
+- **Public Naming**: added `KriegspielGameSnapshot` as the neutral snapshot name while keeping `BerkeleyGameSnapshot` as a compatibility alias
+- **Serialization**: generic loading now rebuilds `KriegspielGame` directly, while wrapper classmethods still round-trip into their own subclasses
+
 ## Kriegspiel v. 1.3.2
 
 - **Public API**: added `kriegspiel.game.KriegspielGame` and package-level exports so the shared engine now has a neutral, intuitive entrypoint instead of only Berkeley-named imports

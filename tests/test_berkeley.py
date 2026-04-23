@@ -1004,7 +1004,7 @@ def test_snapshot_roundtrip_can_rebuild_legacy_must_use_pawns_state():
 
 
 def test_from_snapshot_rejects_wrong_type():
-    with pytest.raises(TypeError, match="BerkeleyGameSnapshot"):
+    with pytest.raises(TypeError, match="KriegspielGameSnapshot"):
         BerkeleyGame.from_snapshot("not-a-snapshot")
 
 
