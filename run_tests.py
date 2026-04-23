@@ -28,7 +28,7 @@ import argparse
 
 def run_tests(test_args):
     """Run pytest with the given arguments."""
-    cmd = ["python", "-m", "pytest"] + test_args
+    cmd = [sys.executable, "-m", "pytest"] + test_args
     print(f"Running: {' '.join(cmd)}")
     return subprocess.run(cmd).returncode
 
@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--rules", action="store_true", help="Run Kriegspiel rule tests only")
     parser.add_argument("--fast", action="store_true", help="Run fast tests (exclude slow)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    parser.add_argument("--coverage", action="store_true", help="Include coverage report")
+    parser.add_argument("--coverage", action="store_true", help="Include line and branch coverage report")
     
     args = parser.parse_args()
     
@@ -53,7 +53,7 @@ def main():
         test_args.append("-v")
     
     if args.coverage:
-        test_args.extend(["--cov=kriegspiel", "--cov-report=term-missing"])
+        test_args.extend(["--cov=kriegspiel", "--cov-report=term-missing", "--cov-branch"])
     
     # Select test categories
     if args.unit:
