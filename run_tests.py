@@ -21,9 +21,9 @@ Usage:
     python run_tests.py --rules            # Run Kriegspiel rule tests only
 """
 
-import sys
-import subprocess
 import argparse
+import subprocess
+import sys
 
 
 def run_tests(test_args):
@@ -42,7 +42,13 @@ def main():
     parser.add_argument("--rules", action="store_true", help="Run Kriegspiel rule tests only")
     parser.add_argument("--fast", action="store_true", help="Run fast tests (exclude slow)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    parser.add_argument("--coverage", action="store_true", help="Include line and branch coverage report")
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Retained for backwards compatibility. Coverage is enabled by default via pyproject.toml.",
+    )
+    parser.add_argument("--no-coverage", action="store_true", help="Disable the default coverage plugin options")
+    parser.add_argument("pytest_args", nargs=argparse.REMAINDER, help="Extra arguments passed directly to pytest")
     
     args = parser.parse_args()
     
@@ -51,9 +57,12 @@ def main():
     
     if args.verbose:
         test_args.append("-v")
-    
-    if args.coverage:
-        test_args.extend(["--cov=kriegspiel", "--cov-report=term-missing", "--cov-branch"])
+
+    if args.coverage and args.no_coverage:
+        parser.error("--coverage and --no-coverage cannot be used together")
+
+    if args.no_coverage:
+        test_args.append("--no-cov")
     
     # Select test categories
     if args.unit:
@@ -71,6 +80,7 @@ def main():
     
     # Add test directory
     test_args.append("tests/")
+    test_args.extend(args.pytest_args)
     
     return run_tests(test_args)
 

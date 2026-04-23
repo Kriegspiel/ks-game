@@ -25,7 +25,6 @@ from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 from kriegspiel.move import KriegspielScoresheet as KSSS
 
-
 @pytest.mark.unit
 def test_incorrect_move_type():
     with pytest.raises(TypeError):
@@ -82,9 +81,19 @@ def test_move_lt_nonmove_returns_notimplemented():
     assert move.__lt__("not-a-move") is NotImplemented
 
 
+def test_move_type_errors_include_context():
+    with pytest.raises(TypeError, match="question_type must be a QuestionAnnouncement"):
+        KSMove("Not a QuestionAnnouncement.")
+
+
 @pytest.mark.unit
 def test_incorrect_answer_type():
     with pytest.raises(TypeError):
+        KSAnswer("Not a MainAnnouncement.")
+
+
+def test_answer_type_errors_include_context():
+    with pytest.raises(TypeError, match="main_announcement must be a MainAnnouncement"):
         KSAnswer("Not a MainAnnouncement.")
 
 
@@ -214,6 +223,26 @@ def test_capture_square_range_validation():
     
     with pytest.raises(ValueError, match="Invalid square number: 100. Must be 0-63."):
         KSAnswer(MA.CAPTURE_DONE, capture_at_square=100)
+
+
+def test_scoresheet_snapshot_roundtrip():
+    scoresheet = KSSS(chess.BLACK)
+    move = KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5))
+    answer = KSAnswer(MA.REGULAR_MOVE)
+    scoresheet.record_move_own(move, answer)
+    scoresheet.record_move_opponent(QA.COMMON, KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.E4))
+
+    restored = KSSS.from_snapshot(scoresheet.snapshot())
+
+    assert restored.color == scoresheet.color
+    assert restored.moves_own == scoresheet.moves_own
+    assert restored.moves_opponent == scoresheet.moves_opponent
+    assert restored.last_move_number == scoresheet.last_move_number
+
+
+def test_scoresheet_from_snapshot_rejects_wrong_type():
+    with pytest.raises(TypeError, match="ScoresheetSnapshot"):
+        KSSS.from_snapshot("not-a-snapshot")
 
 
 def test_special_annoucement():

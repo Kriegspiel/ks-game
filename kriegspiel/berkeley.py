@@ -12,6 +12,11 @@ from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 from kriegspiel.move import KriegspielScoresheet as KSSS
+from kriegspiel.rulesets import RULESET_BERKELEY
+from kriegspiel.rulesets import RULESET_BERKELEY_ANY
+from kriegspiel.rulesets import resolve_ruleset_policy
+from kriegspiel.snapshot import BerkeleyGameSnapshot
+from kriegspiel.snapshot import move_stack_from_scoresheets
 from kriegspiel.serialization import save_game_to_json, load_game_from_json
 
 
@@ -20,10 +25,13 @@ HALFMOVE_CLOCK_LIMIT = 2000
 
 class BerkeleyGame(object):
     """
-    Main class for Berkley Kriegspiel variant. Supports two main variants:
-    with ANY rule and without ANY rule. If any_rule = True — means Berkeley + Any
-    This class should be on the server's side as has info about all pieces on the
-    board.
+    Main class for Berkeley-family Kriegspiel variants.
+
+    The hidden-board referee engine is shared here, while rule-specific behavior
+    such as the Berkeley `ASK_ANY` extension is delegated to a ruleset policy.
+    Today this still ships the classic Berkeley and Berkeley+Any variants, but
+    the policy seam keeps future Cincinnati / Wild 16 support from being wired
+    directly into the engine core.
 
     Communication with this class must be in the form of questions —
     KriegspielMove(s) with QuestionAnnouncement(s).
@@ -32,18 +40,19 @@ class BerkeleyGame(object):
     MainAnnouncement(s) and SpecialCaseAnnouncement.
     """
 
-    def __init__(self, any_rule=True):
+    def __init__(self, any_rule=None, ruleset=None):
         """
         Initialize a new Berkeley Kriegspiel game.
         
         Args:
-            any_rule: Whether to enable the "Any" rule extension. When True,
-                     players can ask "Are there any pawn captures?" to detect
-                     possible captures. This makes the game more dynamic but
-                     changes the strategy significantly. Defaults to True.
+            any_rule: Legacy compatibility flag for Berkeley+Any. When omitted,
+                     Berkeley+Any remains the default.
+            ruleset: Explicit ruleset identifier. Supported values are
+                     `berkeley` and `berkeley_any`.
         """
         super(BerkeleyGame).__init__()
-        self._any_rule = any_rule
+        self._ruleset = resolve_ruleset_policy(ruleset=ruleset, any_rule=any_rule)
+        self._any_rule = self._ruleset.allow_ask_any
         self._board = chess.Board()
         self._must_use_pawns = False
         self._game_over = False
@@ -80,7 +89,7 @@ class BerkeleyGame(object):
             - After HAS_ANY response, player must make a pawn capture move
         """
         if not isinstance(move, KSMove):
-            raise TypeError
+            raise TypeError("move must be a KriegspielMove")
         # Get the main response of the referee
         result = self._ask_for(move)
         # Record the move if it was legit question.
@@ -89,16 +98,7 @@ class BerkeleyGame(object):
         # Regenerate possible to asking list if a move is done
         if result.move_done:
             self._generate_possible_to_ask_list()
-        # Remove non-pawn-captures if there are any pawn captures.
-        # As you MUST do a pawn-capture move when you got positive
-        # response from the referee on ASK_ANY.
-        if result.main_announcement == MA.HAS_ANY:
-            pawn_captures = set(self._generate_possible_pawn_captures())
-            self._set_possible_to_ask(self._possible_to_ask_set & pawn_captures)
-        # Remove pawn captures if there is no pawn captures.
-        if result.main_announcement == MA.NO_ANY:
-            pawn_captures = set(self._generate_possible_pawn_captures())
-            self._set_possible_to_ask(self._possible_to_ask_set - pawn_captures)
+        self._ruleset.apply_post_answer_constraints(self, result)
         # Possible to ask about a move only once
         if result.main_announcement in (MA.ILLEGAL_MOVE, MA.NO_ANY):
             # For `has any` already deleted
@@ -129,14 +129,10 @@ class BerkeleyGame(object):
             # was a possible move from asking player's perspective.
             # IMPORTANT: That's a new info for both players. Hence must be announced.
             return KSAnswer(MA.ILLEGAL_MOVE)
-        elif move.question_type == QA.ASK_ANY:
-            # Any Rule. Asking for any available pawn captures.
-            # Possible to ask once a turn
-            if self._has_any_pawn_captures():
-                self._must_use_pawns = True
-                return KSAnswer(MA.HAS_ANY)
-            else:
-                return KSAnswer(MA.NO_ANY)
+        policy_answer = self._ruleset.handle_special_question(self, move)
+        if policy_answer is not None:
+            return policy_answer
+        raise ValueError(f"Unsupported question type for ruleset {self.ruleset_id}: {move.question_type}")
 
     def _record_the_move(self, move, answer):
         current_turn = self._board.turn
@@ -218,7 +214,7 @@ class BerkeleyGame(object):
                 elif sw_ne_diagonal(from_sq, to_sq):
                     return False
                 else:  # pragma: no cover
-                    raise KeyError
+                    raise RuntimeError("Expected attacker and king to share a diagonal")
             else:
                 # Other two quadrants. And diagonals are vise-versa.
                 if nw_se_diagonal(from_sq, to_sq):
@@ -226,7 +222,7 @@ class BerkeleyGame(object):
                 elif sw_ne_diagonal(from_sq, to_sq):
                     return True
                 else:  # pragma: no cover
-                    raise KeyError
+                    raise RuntimeError("Expected attacker and king to share a diagonal")
 
         def kind_of_check(attacker_square, king_square):
             # Identify the type of check. That will be announced.
@@ -395,8 +391,8 @@ class BerkeleyGame(object):
         pawn captures, and ASK_ANY questions if the any_rule is enabled.
         
         Note:
-            This method has known performance issues with complex positions and
-            may be slow in games with many possible moves.
+            Variant-specific additions such as `ASK_ANY` are injected by the
+            active ruleset policy instead of being hard-coded here.
         """
         if self._game_over:
             self._set_possible_to_ask(set())
@@ -407,9 +403,7 @@ class BerkeleyGame(object):
         # Castling rules are kept as it is generated by the referee's board,
         # which contains info about previous moves.
         possibilities = {KSMove(QA.COMMON, chess_move) for chess_move in players_board.legal_moves}
-        if self._any_rule:
-            # Always possible to ask ANY?
-            possibilities.add(KSMove(QA.ASK_ANY))
+        self._ruleset.add_special_questions(possibilities)
         # Second add possible pawn captures
         possibilities.update(self._generate_possible_pawn_captures())
         self._set_possible_to_ask(possibilities)
@@ -436,6 +430,16 @@ class BerkeleyGame(object):
                  or draw conditions. False if the game is still active.
         """
         return self._game_over
+
+    @property
+    def any_rule(self):
+        """Backward-compatible public flag for Berkeley+Any behavior."""
+        return self._any_rule
+
+    @property
+    def ruleset_id(self):
+        """Explicit ruleset identifier for snapshot and serialization APIs."""
+        return self._ruleset.identifier
 
     @property
     def must_use_pawns(self):
@@ -482,6 +486,61 @@ class BerkeleyGame(object):
             filename: Path to the file where the game state will be saved
         """
         save_game_to_json(self, filename)
+
+    def snapshot(self):
+        """Return a public snapshot of the current game state."""
+        return BerkeleyGameSnapshot(
+            ruleset_id=self.ruleset_id,
+            any_rule=self.any_rule,
+            board_fen=self._board.fen(),
+            move_stack=tuple(move.uci() for move in self._board.move_stack),
+            must_use_pawns=self._must_use_pawns,
+            game_over=self._game_over,
+            possible_to_ask=tuple(self._possible_to_ask),
+            white_scoresheet=self._whites_scoresheet.snapshot(),
+            black_scoresheet=self._blacks_scoresheet.snapshot(),
+        )
+
+    @classmethod
+    def from_snapshot(cls, snapshot):
+        """Build a BerkeleyGame from a validated public snapshot."""
+        if not isinstance(snapshot, BerkeleyGameSnapshot):
+            raise TypeError("snapshot must be a BerkeleyGameSnapshot")
+
+        try:
+            chess.Board(snapshot.board_fen)
+        except ValueError as exc:
+            raise ValueError(f"Invalid board FEN: {snapshot.board_fen}") from exc
+
+        board = chess.Board()
+        try:
+            for move_uci in snapshot.move_stack:
+                board.push_uci(move_uci)
+        except ValueError as exc:
+            raise ValueError(f"Invalid move_stack entry: {move_uci}") from exc
+
+        if board.fen() != snapshot.board_fen:
+            raise ValueError("Serialized move_stack does not match board_fen")
+
+        derived_move_stack = move_stack_from_scoresheets(
+            snapshot.white_scoresheet, snapshot.black_scoresheet
+        )
+        if derived_move_stack != snapshot.move_stack:
+            raise ValueError("Scoresheet-derived moves do not match move_stack")
+
+        game = cls(ruleset=snapshot.ruleset_id)
+        game._board = board
+        game._must_use_pawns = snapshot.must_use_pawns
+        game._game_over = snapshot.game_over
+        game._whites_scoresheet = KSSS.from_snapshot(snapshot.white_scoresheet)
+        game._blacks_scoresheet = KSSS.from_snapshot(snapshot.black_scoresheet)
+        if snapshot.possible_to_ask is None:
+            game._generate_possible_to_ask_list()
+            if game._must_use_pawns:
+                game._set_possible_to_ask(game._generate_possible_pawn_captures())
+        else:
+            game._set_possible_to_ask(snapshot.possible_to_ask)
+        return game
 
     @classmethod
     def load_game(cls, filename):

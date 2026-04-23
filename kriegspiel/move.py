@@ -51,11 +51,11 @@ class KriegspielMove(object):
         super(KriegspielMove, self).__init__()
         # Validation, that question type is from valid enum
         if not isinstance(question_type, QuestionAnnouncement):
-            raise TypeError
+            raise TypeError("question_type must be a QuestionAnnouncement")
         # Validation, that if the question is from common type,
         # then it should be valid chess move object
         if question_type == QuestionAnnouncement.COMMON and not isinstance(chess_move, chess.Move):
-            raise TypeError
+            raise TypeError("COMMON questions require a python-chess Move")
         self.question_type = question_type
         self.chess_move = chess_move
 
@@ -266,7 +266,7 @@ class KriegspielAnswer(object):
         # Validation, that main announcement, can be only
         # Main Announcement.
         if not isinstance(main_announcement, MainAnnouncement):
-            raise TypeError
+            raise TypeError("main_announcement must be a MainAnnouncement")
 
         self._main_announcement = main_announcement
         self._capture_at_square = None
@@ -305,10 +305,12 @@ class KriegspielAnswer(object):
                 else:
                     # Validation, that if it's tuple, then only double check
                     # is the option.
-                    raise TypeError
+                    raise TypeError("Tuple special announcements are only valid for CHECK_DOUBLE")
             else:
                 # Validation, that Special Case Announcement could be SCA or tuple.
-                raise TypeError
+                raise TypeError(
+                    "special_announcement must be a SpecialCaseAnnouncement or a CHECK_DOUBLE tuple"
+                )
 
         if self._main_announcement in MOVE_DONE:
             self._move_done = True
@@ -530,6 +532,11 @@ class KriegspielScoresheet:
         return self.__moves_opponent
 
     @property
+    def last_move_number(self):
+        """Expose the current internal move-number cursor for snapshots."""
+        return self.__last_move_number
+
+    @property
     def color(self):
         """
         Get the color of the player this scoresheet belongs to.
@@ -593,9 +600,9 @@ class KriegspielScoresheet:
             ValueError: If move is not a KriegspielMove or answer is not a KriegspielAnswer
         """
         if not isinstance(move, KriegspielMove):
-            raise ValueError
+            raise ValueError("move must be a KriegspielMove")
         if not isinstance(answer, KriegspielAnswer):
-            raise ValueError
+            raise ValueError("answer must be a KriegspielAnswer")
         current_move_number = self.__get_current_move_number()
         if current_move_number == len(self.__moves_own):
             self.__moves_own[-1].append((move, answer))
@@ -615,11 +622,36 @@ class KriegspielScoresheet:
             ValueError: If question is not a QuestionAnnouncement or answer is not a KriegspielAnswer
         """
         if not isinstance(question, QuestionAnnouncement):
-            raise ValueError
+            raise ValueError("question must be a QuestionAnnouncement")
         if not isinstance(answer, KriegspielAnswer):
-            raise ValueError
+            raise ValueError("answer must be a KriegspielAnswer")
         current_move_number = self.__get_current_move_number()
         if current_move_number == len(self.__moves_opponent):
             self.__moves_opponent[-1].append((question, answer))
         else:
             self.__moves_opponent.append([(question, answer)])
+
+    def snapshot(self):
+        """Return a public, serialization-friendly snapshot of this scoresheet."""
+        from kriegspiel.snapshot import ScoresheetSnapshot
+
+        return ScoresheetSnapshot(
+            color=self.__color,
+            moves_own=tuple(tuple(turn) for turn in self.__moves_own),
+            moves_opponent=tuple(tuple(turn) for turn in self.__moves_opponent),
+            last_move_number=self.__last_move_number,
+        )
+
+    @classmethod
+    def from_snapshot(cls, snapshot):
+        """Build a scoresheet from a public snapshot."""
+        from kriegspiel.snapshot import ScoresheetSnapshot
+
+        if not isinstance(snapshot, ScoresheetSnapshot):
+            raise TypeError("snapshot must be a ScoresheetSnapshot")
+
+        scoresheet = cls(snapshot.color)
+        scoresheet.__moves_own = [list(turn) for turn in snapshot.moves_own]
+        scoresheet.__moves_opponent = [list(turn) for turn in snapshot.moves_opponent]
+        scoresheet.__last_move_number = snapshot.last_move_number
+        return scoresheet
