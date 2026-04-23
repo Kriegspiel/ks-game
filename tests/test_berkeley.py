@@ -640,6 +640,11 @@ def test_always_possible_to_ask_any():
     assert (KSMove(QA.ASK_ANY) in g.possible_to_ask) is True
 
 
+def test_ask_any_not_possible_when_variant_disables_it():
+    g = BerkeleyGame(any_rule=False)
+    assert KSMove(QA.ASK_ANY) not in g.possible_to_ask
+
+
 def test_possible_capture_with_promotion():
     g = BerkeleyGame()
     g._board.clear()
@@ -658,6 +663,21 @@ def test_12_possibilities_with_pawn_capture_and_promotion():
     g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
     g._generate_possible_to_ask_list()
     assert len(g.possible_to_ask) == 12
+
+
+def test_repeated_generation_keeps_promotion_capture_options_stable():
+    g = BerkeleyGame()
+    g._board.clear()
+    g._board.set_piece_at(chess.A7, chess.Piece(chess.PAWN, chess.WHITE))
+    g._board.set_piece_at(chess.H1, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    g._generate_possible_to_ask_list()
+
+    expected = set(g.possible_to_ask)
+
+    for _ in range(3):
+        g._generate_possible_to_ask_list()
+        assert set(g.possible_to_ask) == expected
 
 
 def test_no_legal_moves_after_gameover():
@@ -679,6 +699,21 @@ def test_ask_same_twice():
     g = BerkeleyGame()
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.F3)))
     assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.F3))) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+
+
+def test_hidden_enemy_blocker_still_allows_the_question_to_be_asked():
+    g = BerkeleyGame(any_rule=False)
+    g._board.clear()
+    g._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.E8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
+    g._board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
+    g._generate_possible_to_ask_list()
+
+    move = KSMove(QA.COMMON, chess.Move(chess.C1, chess.E3))
+
+    assert move in g.possible_to_ask
+    assert g.ask_for(move) == KSAnswer(MA.ILLEGAL_MOVE)
 
 
 def test_no_possible_pawn_capture_after_false_any():
@@ -727,6 +762,24 @@ def test_impossible_ask_same_move_twice():
 def test_possible_to_ask(what, result):
     g = BerkeleyGame()
     assert g.is_possible_to_ask(what) == result
+
+
+def test_castling_rights_control_possible_to_ask_membership():
+    g = BerkeleyGame()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F1, chess.C4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F8, chess.C5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.H3)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.H6)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F2, chess.F4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F7, chess.F5)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E1, chess.E2)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.C5, chess.F8)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E1)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.H8, chess.G8)))
+
+    assert KSMove(QA.COMMON, chess.Move(chess.E1, chess.G1)) not in g.possible_to_ask
 
 
 def test_initial_game_is_not_over():
