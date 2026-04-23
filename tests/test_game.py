@@ -9,6 +9,7 @@ import chess
 import pytest
 
 from kriegspiel import BerkeleyGame
+from kriegspiel import CincinnatiGame
 from kriegspiel import KriegspielGame
 from kriegspiel import KriegspielMove as KSMove
 from kriegspiel import MainAnnouncement as MA
@@ -27,6 +28,8 @@ def test_generic_game_defaults_to_berkeley_any():
 
     assert game.ruleset_id == RULESET_BERKELEY_ANY
     assert game.any_rule is True
+    assert game.current_turn_has_pawn_capture is None
+    assert game.current_turn_pawn_tries is None
 
 
 def test_generic_game_from_snapshot_returns_generic_class():
@@ -105,4 +108,5 @@ def test_move_stack_from_scoresheets_handles_black_only_turns():
 def test_package_root_exports_variant_entrypoints():
     assert KriegspielGame.__name__ == "KriegspielGame"
     assert BerkeleyGame.__name__ == "BerkeleyGame"
+    assert CincinnatiGame.__name__ == "CincinnatiGame"
     assert Wild16Game.__name__ == "Wild16Game"

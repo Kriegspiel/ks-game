@@ -1,5 +1,12 @@
 # Release Notes
 
+## Kriegspiel v. 1.4.0
+
+- **Cincinnati Support**: added first-class `cincinnati` ruleset handling plus a dedicated `kriegspiel.cincinnati.CincinnatiGame` convenience entrypoint
+- **Referee Announcements**: added explicit `NONSENSE` answers and Cincinnati-style binary pawn-capture announcements for the next player to move
+- **Serialization**: schema `6` now preserves Cincinnati pawn-capture announcement metadata while still reading schemas `3`, `4`, and `5`
+- **Testing**: added focused Cincinnati engine and serialization coverage while keeping the full package at 100% line and branch coverage
+
 ## Kriegspiel v. 1.3.3
 
 - **API Ownership**: moved the shared engine implementation into `kriegspiel.game.KriegspielGame`, with `BerkeleyGame` now acting as the backward-compatible wrapper instead of the other way around

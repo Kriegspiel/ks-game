@@ -27,6 +27,7 @@ from kriegspiel.serialization import (
 )
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
+from kriegspiel.rulesets import RULESET_CINCINNATI
 from kriegspiel.rulesets import RULESET_WILD16
 
 
@@ -95,6 +96,7 @@ class TestEnumSerializer:
             (MainAnnouncement.REGULAR_MOVE, deserialize_main_announcement),
             (MainAnnouncement.CAPTURE_DONE, deserialize_main_announcement),
             (MainAnnouncement.ILLEGAL_MOVE, deserialize_main_announcement),
+            (MainAnnouncement.NONSENSE, deserialize_main_announcement),
             (SpecialCaseAnnouncement.NONE, deserialize_special_case_announcement),
             (SpecialCaseAnnouncement.CHECK_RANK, deserialize_special_case_announcement),
             (SpecialCaseAnnouncement.CHECKMATE_WHITE_WINS, deserialize_special_case_announcement),
@@ -295,12 +297,47 @@ class TestKriegspielAnswerSerializer:
             captured_piece_announcement=CapturedPieceAnnouncement.PIECE,
             next_turn_pawn_tries=3,
         )
+
+    def test_serialize_cincinnati_answer_fields(self):
+        answer = KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            next_turn_has_pawn_capture=True,
+        )
+
+        assert serialize_kriegspiel_answer(answer) == {
+            "main_announcement": "REGULAR_MOVE",
+            "capture_at_square": None,
+            "captured_piece_announcement": None,
+            "special_announcement": "NONE",
+            "next_turn_pawn_tries": None,
+            "check_1": None,
+            "check_2": None,
+            "next_turn_has_pawn_capture": True,
+        }
+
+    def test_deserialize_cincinnati_answer_fields(self):
+        data = {
+            "main_announcement": "REGULAR_MOVE",
+            "capture_at_square": None,
+            "captured_piece_announcement": None,
+            "special_announcement": "NONE",
+            "next_turn_pawn_tries": None,
+            "check_1": None,
+            "check_2": None,
+            "next_turn_has_pawn_capture": False,
+        }
+
+        assert deserialize_kriegspiel_answer(data) == KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            next_turn_has_pawn_capture=False,
+        )
     
     def test_kriegspiel_answer_roundtrip(self):
         answers = [
             KriegspielAnswer(MainAnnouncement.REGULAR_MOVE),
             KriegspielAnswer(MainAnnouncement.CAPTURE_DONE, capture_at_square=28),
             KriegspielAnswer(MainAnnouncement.ILLEGAL_MOVE),
+            KriegspielAnswer(MainAnnouncement.NONSENSE),
             KriegspielAnswer(MainAnnouncement.REGULAR_MOVE, 
                            special_announcement=SpecialCaseAnnouncement.CHECK_RANK),
             KriegspielAnswer(MainAnnouncement.REGULAR_MOVE,
@@ -309,6 +346,7 @@ class TestKriegspielAnswerSerializer:
                                                 SpecialCaseAnnouncement.CHECK_FILE])),
             KriegspielAnswer(MainAnnouncement.HAS_ANY),
             KriegspielAnswer(MainAnnouncement.NO_ANY),
+            KriegspielAnswer(MainAnnouncement.REGULAR_MOVE, next_turn_has_pawn_capture=True),
         ]
         
         for answer in answers:
@@ -411,6 +449,13 @@ class TestBerkeleyGameSerializer:
 
         assert result["game_state"]["ruleset_id"] == RULESET_WILD16
         assert result["game_state"]["any_rule"] is False
+
+    def test_serialize_cincinnati_game(self):
+        game = BerkeleyGame(ruleset=RULESET_CINCINNATI)
+        result = serialize_berkeley_game(game)
+
+        assert result["game_state"]["ruleset_id"] == RULESET_CINCINNATI
+        assert result["game_state"]["any_rule"] is False
     
     def test_serialize_game_with_moves(self):
         game = BerkeleyGame(any_rule=True)
@@ -494,6 +539,21 @@ class TestBerkeleyGameSerializer:
         assert deserialized._blacks_scoresheet.moves_opponent[0][0][1] == KriegspielAnswer(
             MainAnnouncement.REGULAR_MOVE,
             next_turn_pawn_tries=0,
+        )
+
+    def test_cincinnati_roundtrip_preserves_public_nonsense_and_binary_pawn_capture(self):
+        game = BerkeleyGame(ruleset=RULESET_CINCINNATI)
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e3e4")))
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")))
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("d7d5")))
+        serialized = serialize_berkeley_game(game)
+        deserialized = deserialize_berkeley_game(serialized)
+
+        assert deserialized.ruleset_id == RULESET_CINCINNATI
+        assert deserialized._whites_scoresheet.moves_own[0][0][1] == KriegspielAnswer(MainAnnouncement.NONSENSE)
+        assert deserialized._whites_scoresheet.moves_opponent[0][0][1] == KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            next_turn_has_pawn_capture=True,
         )
 
     def test_deserialize_rejects_missing_move_stack(self):
