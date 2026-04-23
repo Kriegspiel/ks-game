@@ -20,6 +20,7 @@ from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import QuestionAnnouncement as QA
 
 from kriegspiel.move import KriegspielAnswer as KSAnswer
+from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
@@ -206,6 +207,42 @@ def test_captue_at_square():
     assert a.capture_at_square == chess.E2
 
 
+def test_capture_answer_can_include_public_capture_kind():
+    answer = KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.E4,
+        captured_piece_announcement=CPA.PAWN,
+    )
+
+    assert answer.captured_piece_announcement == CPA.PAWN
+
+
+def test_capture_answer_rejects_invalid_public_capture_kind():
+    with pytest.raises(TypeError, match="captured_piece_announcement must be a CapturedPieceAnnouncement"):
+        KSAnswer(
+            MA.CAPTURE_DONE,
+            capture_at_square=chess.E4,
+            captured_piece_announcement="pawn",
+        )
+
+
+def test_non_capture_answer_rejects_public_capture_kind():
+    with pytest.raises(TypeError, match="captured_piece_announcement is only valid for CAPTURE_DONE"):
+        KSAnswer(MA.REGULAR_MOVE, captured_piece_announcement=CPA.PAWN)
+
+
+def test_next_turn_pawn_tries_validation():
+    answer = KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_tries=2)
+
+    assert answer.next_turn_pawn_tries == 2
+
+    with pytest.raises(TypeError, match="next_turn_pawn_tries must be an integer"):
+        KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_tries="2")
+
+    with pytest.raises(ValueError, match="next_turn_pawn_tries must be non-negative"):
+        KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_tries=-1)
+
+
 @pytest.mark.unit
 def test_capture_square_range_validation():
     """Test that capture squares must be within valid range (0-63)."""
@@ -314,7 +351,8 @@ def test_ksanswer_str_with_double_check_payload():
 
     assert str(answer) == (
         "<KriegspielAnswer: MainAnnouncement.REGULAR_MOVE, "
-        "capture_at=None, special_case=SpecialCaseAnnouncement.CHECK_DOUBLE, "
+        "capture_at=None, captured_piece=None, special_case=SpecialCaseAnnouncement.CHECK_DOUBLE, "
+        "next_turn_pawn_tries=None, "
         "check_1=SpecialCaseAnnouncement.CHECK_FILE, "
         "check_2=SpecialCaseAnnouncement.CHECK_KNIGHT>"
     )

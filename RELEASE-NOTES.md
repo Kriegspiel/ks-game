@@ -1,5 +1,12 @@
 # Release Notes
 
+## Kriegspiel v. 1.3.0
+
+- **Wild 16 Support**: added first-class `wild16` ruleset handling, including typed pawn-vs-piece capture announcements, Wild 16 pawn-try counts, and private illegal-attempt behavior
+- **Answer Model**: `KriegspielAnswer` can now carry public capture-kind metadata and next-turn pawn-try counts for rulesets that announce them
+- **Serialization**: schema `5` now preserves the new Wild 16 answer metadata while remaining compatible with schema `3` and `4` payloads
+- **Testing**: added focused Wild 16 engine, serialization, and privacy regression coverage while keeping the full suite above the project coverage gate
+
 ## Kriegspiel v. 1.2.6
 
 - **Serialization**: removed support for pre-canonical payloads that used the old top-level `version` field instead of `schema_version`; schema `3` remains supported for current stored games and schema `4` remains the writer format

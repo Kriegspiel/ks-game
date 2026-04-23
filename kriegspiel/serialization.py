@@ -8,8 +8,8 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 
 JSON Schema Structure:
 {
-  "schema_version": 4,
-  "library_version": "1.2.5",
+  "schema_version": 5,
+  "library_version": "1.3.0",
   "game_type": "BerkeleyGame",
   "game_state": {
     "ruleset_id": "berkeley_any",
@@ -45,7 +45,9 @@ moves_own/moves_opponent: [
       {  // KriegspielAnswer
         "main_announcement": "REGULAR_MOVE" | "CAPTURE_DONE" | ...,
         "capture_at_square": int | null,
+        "captured_piece_announcement": "PAWN" | "PIECE" | null,
         "special_announcement": "NONE" | "CHECK_RANK" | ...,
+        "next_turn_pawn_tries": int | null,
         "check_1": "CHECK_RANK" | null,  // For double check
         "check_2": "CHECK_FILE" | null   // For double check
       }
@@ -60,7 +62,7 @@ from typing import Any, Dict, List, Optional, Union
 import chess
 
 from kriegspiel.move import (
-    QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement,
+    QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement, CapturedPieceAnnouncement,
     KriegspielMove, KriegspielAnswer, KriegspielScoresheet
 )
 from kriegspiel.snapshot import BerkeleyGameSnapshot
@@ -71,8 +73,9 @@ from kriegspiel.snapshot import move_stack_from_scoresheets
 # Import version from main module
 from kriegspiel import __version__
 
-PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 3
-SERIALIZATION_SCHEMA_VERSION = 4
+LEGACY_SERIALIZATION_SCHEMA_VERSION = 3
+PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 4
+SERIALIZATION_SCHEMA_VERSION = 5
 
 
 class SerializationError(Exception):
@@ -97,7 +100,7 @@ class KriegspielJSONEncoder(json.JSONEncoder):
         """Convert Kriegspiel objects to JSON-serializable format."""
         if isinstance(obj, chess.Move):
             return obj.uci()
-        elif isinstance(obj, (QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement)):
+        elif isinstance(obj, (QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement, CapturedPieceAnnouncement)):
             return obj.name
         elif isinstance(obj, KriegspielMove):
             return serialize_kriegspiel_move(obj)
@@ -126,7 +129,14 @@ def deserialize_chess_move(uci_str: Optional[str]) -> Optional[chess.Move]:
         raise MalformedDataError(f"Invalid UCI move string: {uci_str}") from e
 
 
-def serialize_enum(enum_val: Union[QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement]) -> str:
+def serialize_enum(
+    enum_val: Union[
+        QuestionAnnouncement,
+        MainAnnouncement,
+        SpecialCaseAnnouncement,
+        CapturedPieceAnnouncement,
+    ]
+) -> str:
     """Serialize enum to its name string."""
     return enum_val.name
 
@@ -153,6 +163,14 @@ def deserialize_special_case_announcement(name: str) -> SpecialCaseAnnouncement:
         return SpecialCaseAnnouncement[name]
     except KeyError as e:
         raise MalformedDataError(f"Invalid SpecialCaseAnnouncement: {name}") from e
+
+
+def deserialize_captured_piece_announcement(name: str) -> CapturedPieceAnnouncement:
+    """Deserialize string name to CapturedPieceAnnouncement enum."""
+    try:
+        return CapturedPieceAnnouncement[name]
+    except KeyError as e:
+        raise MalformedDataError(f"Invalid CapturedPieceAnnouncement: {name}") from e
 
 
 def serialize_kriegspiel_move(move: KriegspielMove) -> Dict[str, Any]:
@@ -192,7 +210,13 @@ def serialize_kriegspiel_answer(answer: KriegspielAnswer) -> Dict[str, Any]:
     return {
         "main_announcement": serialize_enum(answer.main_announcement),
         "capture_at_square": answer.capture_at_square,
+        "captured_piece_announcement": (
+            serialize_enum(answer.captured_piece_announcement)
+            if answer.captured_piece_announcement is not None
+            else None
+        ),
         "special_announcement": serialize_enum(answer.special_announcement),
+        "next_turn_pawn_tries": answer.next_turn_pawn_tries,
         "check_1": serialize_enum(answer.check_1) if answer.check_1 is not None else None,
         "check_2": serialize_enum(answer.check_2) if answer.check_2 is not None else None
     }
@@ -208,6 +232,12 @@ def deserialize_kriegspiel_answer(data: Dict[str, Any]) -> KriegspielAnswer:
         
         if data.get("capture_at_square") is not None:
             kwargs["capture_at_square"] = data["capture_at_square"]
+        if data.get("captured_piece_announcement") is not None:
+            kwargs["captured_piece_announcement"] = deserialize_captured_piece_announcement(
+                data["captured_piece_announcement"]
+            )
+        if data.get("next_turn_pawn_tries") is not None:
+            kwargs["next_turn_pawn_tries"] = data["next_turn_pawn_tries"]
         
         special_announcement = deserialize_special_case_announcement(data["special_announcement"])
         
@@ -299,11 +329,12 @@ def serialize_berkeley_game(game) -> Dict[str, Any]:
 def deserialize_berkeley_game(data: Dict[str, Any]):
     """Deserialize dictionary to BerkeleyGame."""
     try:
-        # Check schema compatibility. Live data is schema 3; new writes use schema 4.
+        # Check schema compatibility. Live data uses schema 3/4; new writes use schema 5.
         schema_version = data.get("schema_version")
         if schema_version is None:
             raise UnsupportedVersionError("Missing schema_version")
         if schema_version not in {
+            LEGACY_SERIALIZATION_SCHEMA_VERSION,
             PREVIOUS_SERIALIZATION_SCHEMA_VERSION,
             SERIALIZATION_SCHEMA_VERSION,
         }:
