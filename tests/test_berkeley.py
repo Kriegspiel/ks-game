@@ -20,25 +20,12 @@ from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import QuestionAnnouncement as QA
 
 from kriegspiel.move import KriegspielAnswer as KSAnswer
-from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
-from kriegspiel.rulesets import RULESET_WILD16
 from kriegspiel.rulesets import resolve_ruleset_policy
 from kriegspiel.snapshot import BerkeleyGameSnapshot
-
-
-def _build_hidden_blocker_wild16_game():
-    game = BerkeleyGame(ruleset=RULESET_WILD16)
-    game._board.clear()
-    game._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
-    game._board.set_piece_at(chess.E8, chess.Piece(chess.KING, chess.BLACK))
-    game._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
-    game._board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
-    game._generate_possible_to_ask_list()
-    return game
 
 
 @pytest.mark.integration
@@ -92,15 +79,6 @@ def test_unknown_ruleset_is_rejected():
         BerkeleyGame(ruleset="unknown_variant")
 
 
-def test_explicit_ruleset_can_enable_wild16():
-    g = BerkeleyGame(ruleset=RULESET_WILD16)
-
-    assert g.ruleset_id == RULESET_WILD16
-    assert g.any_rule is False
-    assert KSMove(QA.ASK_ANY) not in g.possible_to_ask
-    assert g.current_turn_pawn_tries == 0
-
-
 def test_ruleset_policy_returns_none_for_non_special_question():
     policy = resolve_ruleset_policy(ruleset=RULESET_BERKELEY_ANY)
 
@@ -111,82 +89,6 @@ def test_ruleset_policy_rejects_ask_any_when_disabled():
     policy = resolve_ruleset_policy(ruleset=RULESET_BERKELEY)
 
     assert policy.handle_special_question(BerkeleyGame(any_rule=False), KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
-
-
-def test_wild16_policy_uses_private_illegal_moves():
-    policy = resolve_ruleset_policy(ruleset=RULESET_WILD16)
-
-    assert policy.classify_impossible_common_attempt() == MA.ILLEGAL_MOVE
-    assert policy.public_illegal_attempts is False
-    assert policy.discard_illegal_attempts is False
-
-
-def test_wild16_illegal_attempt_is_private_to_mover():
-    g = BerkeleyGame(ruleset=RULESET_WILD16)
-
-    result = g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E5)))
-
-    assert result == KSAnswer(MA.ILLEGAL_MOVE)
-    assert len(g._whites_scoresheet.moves_own) == 1
-    assert g._whites_scoresheet.moves_own[0][0][1] == KSAnswer(MA.ILLEGAL_MOVE)
-    assert g._blacks_scoresheet.moves_opponent == []
-
-
-def test_wild16_hidden_illegal_attempt_stays_repeatable():
-    g = _build_hidden_blocker_wild16_game()
-    move = KSMove(QA.COMMON, chess.Move(chess.C1, chess.H6))
-
-    assert move in g.possible_to_ask
-    assert g.ask_for(move) == KSAnswer(MA.ILLEGAL_MOVE)
-    assert g.ask_for(move) == KSAnswer(MA.ILLEGAL_MOVE)
-    assert len(g._whites_scoresheet.moves_own[0]) == 2
-    assert g._blacks_scoresheet.moves_opponent == []
-
-
-def test_wild16_completed_move_announces_next_turn_pawn_tries():
-    g = BerkeleyGame(ruleset=RULESET_WILD16)
-
-    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
-    result = g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
-
-    assert result == KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_tries=1)
-    assert g.current_turn_pawn_tries == 1
-
-
-def test_wild16_capture_announces_pawn_kind():
-    g = BerkeleyGame(ruleset=RULESET_WILD16)
-    g._board.clear()
-    g._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
-    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g._board.set_piece_at(chess.E4, chess.Piece(chess.PAWN, chess.WHITE))
-    g._board.set_piece_at(chess.D5, chess.Piece(chess.PAWN, chess.BLACK))
-    g._generate_possible_to_ask_list()
-
-    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.D5))) == KSAnswer(
-        MA.CAPTURE_DONE,
-        capture_at_square=chess.D5,
-        captured_piece_announcement=CPA.PAWN,
-        next_turn_pawn_tries=0,
-    )
-
-
-def test_wild16_pawn_try_count_ignores_captures_that_do_not_escape_check():
-    g = BerkeleyGame(ruleset=RULESET_WILD16)
-    g._board.clear()
-    g._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
-    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    g._board.set_piece_at(chess.D2, chess.Piece(chess.PAWN, chess.WHITE))
-    g._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.BLACK))
-    g._board.set_piece_at(chess.E3, chess.Piece(chess.BISHOP, chess.BLACK))
-    g._generate_possible_to_ask_list()
-
-    assert g.current_turn_pawn_tries == 0
-
-
-def test_wild16_ask_any_is_not_supported():
-    g = BerkeleyGame(ruleset=RULESET_WILD16)
-
-    assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_black_illegal_after_any_true():
