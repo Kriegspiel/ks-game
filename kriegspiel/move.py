@@ -232,6 +232,14 @@ SINGLE_CHECK = [
 ]
 
 
+@enum.unique
+class CapturedPieceAnnouncement(enum.Enum):
+    """Public capture detail for variants that announce pawn vs piece."""
+
+    PAWN = 1
+    PIECE = 2
+
+
 class KriegspielAnswer(object):
     """
     Represents the referee's response to a Kriegspiel move question.
@@ -252,9 +260,14 @@ class KriegspielAnswer(object):
             **kwargs: Additional answer details:
                 capture_at_square (int): Required for CAPTURE_DONE. Square number (0-63)
                                        where the capture occurred.
+                captured_piece_announcement (CapturedPieceAnnouncement): Optional public
+                                    capture detail for variants that distinguish pawn
+                                    captures from other piece captures.
                 special_announcement: Optional special game state from SpecialCaseAnnouncement
                                     enum. Can be a single value or tuple for double check.
                                     For CHECK_DOUBLE, provide (CHECK_DOUBLE, [check1, check2]).
+                next_turn_pawn_tries (int): Optional Wild 16 style count of legal pawn
+                                    captures available for the next player to move.
         
         Raises:
             TypeError: If main_announcement is not a MainAnnouncement enum value,
@@ -270,10 +283,12 @@ class KriegspielAnswer(object):
 
         self._main_announcement = main_announcement
         self._capture_at_square = None
+        self._captured_piece_announcement = None
         self._special_announcement = SpecialCaseAnnouncement.NONE
         self._move_done = False
         self._check_1 = None
         self._check_2 = None
+        self._next_turn_pawn_tries = None
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             # Validation, that when capture is done, then valid square should
@@ -284,6 +299,13 @@ class KriegspielAnswer(object):
             if not (0 <= square <= 63):  # Chess board has 64 squares (0-63)
                 raise ValueError(f"Invalid square number: {square}. Must be 0-63.")
             self._capture_at_square = square
+            if "captured_piece_announcement" in kwargs:
+                captured_piece_announcement = kwargs["captured_piece_announcement"]
+                if not isinstance(captured_piece_announcement, CapturedPieceAnnouncement):
+                    raise TypeError("captured_piece_announcement must be a CapturedPieceAnnouncement")
+                self._captured_piece_announcement = captured_piece_announcement
+        elif "captured_piece_announcement" in kwargs:
+            raise TypeError("captured_piece_announcement is only valid for CAPTURE_DONE")
 
         if "special_announcement" in kwargs:
             sca = kwargs["special_announcement"]
@@ -311,6 +333,14 @@ class KriegspielAnswer(object):
                 raise TypeError(
                     "special_announcement must be a SpecialCaseAnnouncement or a CHECK_DOUBLE tuple"
                 )
+
+        if "next_turn_pawn_tries" in kwargs:
+            next_turn_pawn_tries = kwargs["next_turn_pawn_tries"]
+            if not isinstance(next_turn_pawn_tries, int):
+                raise TypeError("next_turn_pawn_tries must be an integer")
+            if next_turn_pawn_tries < 0:
+                raise ValueError("next_turn_pawn_tries must be non-negative")
+            self._next_turn_pawn_tries = next_turn_pawn_tries
 
         if self._main_announcement in MOVE_DONE:
             self._move_done = True
@@ -348,6 +378,16 @@ class KriegspielAnswer(object):
         return self._special_announcement
 
     @property
+    def captured_piece_announcement(self):
+        """
+        Get the public capture kind for variants that expose pawn vs piece.
+
+        Returns:
+            CapturedPieceAnnouncement or None: Public capture kind when available.
+        """
+        return self._captured_piece_announcement
+
+    @property
     def move_done(self):
         """
         Check if the move was successfully completed.
@@ -357,6 +397,16 @@ class KriegspielAnswer(object):
                  False if move was illegal or impossible.
         """
         return self._move_done
+
+    @property
+    def next_turn_pawn_tries(self):
+        """
+        Get the next player's legal pawn-capture count when the ruleset announces it.
+
+        Returns:
+            int or None: Wild 16 style pawn-try count for the next player to move.
+        """
+        return self._next_turn_pawn_tries
 
     @property
     def check_1(self):
@@ -392,7 +442,12 @@ class KriegspielAnswer(object):
         if isinstance(self._capture_at_square, int):
             capture_at = chess.SQUARE_NAMES[self._capture_at_square]
 
-        main_data = [f"capture_at={capture_at}", f"special_case={self._special_announcement}"]
+        main_data = [
+            f"capture_at={capture_at}",
+            f"captured_piece={self._captured_piece_announcement}",
+            f"special_case={self._special_announcement}",
+            f"next_turn_pawn_tries={self._next_turn_pawn_tries}",
+        ]
 
         if self._check_1 is not None or self._check_2 is not None:
             extra_data = f"check_1={self._check_1}, check_2={self._check_2}"
@@ -404,7 +459,9 @@ class KriegspielAnswer(object):
         return (
             self._main_announcement,
             self._capture_at_square,
+            self._captured_piece_announcement,
             self._special_announcement,
+            self._next_turn_pawn_tries,
             self._check_1,
             self._check_2,
         )
@@ -413,7 +470,9 @@ class KriegspielAnswer(object):
         return (
             self._main_announcement.value,
             self._capture_at_square,
+            self._captured_piece_announcement.value if self._captured_piece_announcement is not None else -1,
             self._special_announcement.value,
+            self._next_turn_pawn_tries if self._next_turn_pawn_tries is not None else -1,
             self._check_1.value if self._check_1 is not None else -1,
             self._check_2.value if self._check_2 is not None else -1,
         )

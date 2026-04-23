@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import enum
-
 import chess
 
 from kriegspiel.move import KriegspielMove as KSMove
@@ -12,8 +10,6 @@ from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 
 from kriegspiel.move import KriegspielScoresheet as KSSS
-from kriegspiel.rulesets import RULESET_BERKELEY
-from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 from kriegspiel.rulesets import resolve_ruleset_policy
 from kriegspiel.snapshot import BerkeleyGameSnapshot
 from kriegspiel.snapshot import move_stack_from_scoresheets
@@ -48,7 +44,7 @@ class BerkeleyGame(object):
             any_rule: Legacy compatibility flag for Berkeley+Any. When omitted,
                      Berkeley+Any remains the default.
             ruleset: Explicit ruleset identifier. Supported values are
-                     `berkeley` and `berkeley_any`.
+                     `berkeley`, `berkeley_any`, and `wild16`.
         """
         super(BerkeleyGame).__init__()
         self._ruleset = resolve_ruleset_policy(ruleset=ruleset, any_rule=any_rule)
@@ -99,9 +95,7 @@ class BerkeleyGame(object):
         if result.move_done:
             self._generate_possible_to_ask_list()
         self._ruleset.apply_post_answer_constraints(self, result)
-        # Possible to ask about a move only once
-        if result.main_announcement in (MA.ILLEGAL_MOVE, MA.NO_ANY):
-            # For `has any` already deleted
+        if self._ruleset.should_discard_attempt(move, result):
             self._discard_possible_to_ask(move)
         return result
 
@@ -109,26 +103,32 @@ class BerkeleyGame(object):
         """
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         """
-        # If a player asks for a non-sense move. Stop it.
-        if move not in self._possible_to_ask_set:
-            return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
-
         if move.question_type == QA.COMMON:
+            if move not in self._possible_to_ask_set:
+                return KSAnswer(self._ruleset.classify_impossible_common_attempt())
             # Player asks about a common move
             if self._is_legal_move(move.chess_move):
                 # Move is legal in normal chess
                 # Perform normal move
-                captured_square = self._make_move(move.chess_move)
+                captured_square, captured_piece_announcement = self._make_move(move.chess_move)
                 special_case = self._check_special_cases()
+                next_turn_pawn_tries = self._ruleset.next_turn_pawn_tries(self)
+                answer_kwargs = {"special_announcement": special_case}
+                if next_turn_pawn_tries is not None:
+                    answer_kwargs["next_turn_pawn_tries"] = next_turn_pawn_tries
                 if captured_square is not None:
                     # If it was capture
-                    return KSAnswer(MA.CAPTURE_DONE, capture_at_square=captured_square, special_announcement=special_case)
+                    answer_kwargs["capture_at_square"] = captured_square
+                    if captured_piece_announcement is not None:
+                        answer_kwargs["captured_piece_announcement"] = captured_piece_announcement
+                    return KSAnswer(MA.CAPTURE_DONE, **answer_kwargs)
                 # If it was a regular move, and NO captures
-                return KSAnswer(MA.REGULAR_MOVE, special_announcement=special_case)
+                return KSAnswer(MA.REGULAR_MOVE, **answer_kwargs)
             # If a move is illegal from the referee's perspective. But it's
             # was a possible move from asking player's perspective.
-            # IMPORTANT: That's a new info for both players. Hence must be announced.
             return KSAnswer(MA.ILLEGAL_MOVE)
+        if move not in self._possible_to_ask_set:
+            return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
         policy_answer = self._ruleset.handle_special_question(self, move)
         if policy_answer is not None:
             return policy_answer
@@ -140,10 +140,12 @@ class BerkeleyGame(object):
             current_turn = not current_turn
         if current_turn == chess.WHITE:
             self._whites_scoresheet.record_move_own(move, answer)
-            self._blacks_scoresheet.record_move_opponent(move.question_type, answer)
+            if self._ruleset.should_record_opponent_answer(move, answer):
+                self._blacks_scoresheet.record_move_opponent(move.question_type, answer)
         else:
             self._blacks_scoresheet.record_move_own(move, answer)
-            self._whites_scoresheet.record_move_opponent(move.question_type, answer)
+            if self._ruleset.should_record_opponent_answer(move, answer):
+                self._whites_scoresheet.record_move_opponent(move.question_type, answer)
 
     def is_game_over(self):
         """
@@ -282,17 +284,40 @@ class BerkeleyGame(object):
             else:
                 return move.to_square + 8
 
+    def _get_captured_piece(self, move):
+        """Return the piece removed by a capture before the move is pushed."""
+        if not self._board.is_capture(move):
+            return None
+        captured_square = self._get_captured_square(move)
+        return self._board.piece_at(captured_square)
+
     def _make_move(self, move):
         """
         Make the move on the referee's board
-        and return square with capture.
+        and return capture details.
         """
         self._must_use_pawns = False
         captured_square = None
+        captured_piece_announcement = None
         if self._board.is_capture(move):
             captured_square = self._get_captured_square(move)
+            captured_piece = self._get_captured_piece(move)
+            captured_piece_announcement = self._ruleset.captured_piece_announcement_for(captured_piece)
         self._board.push(move)
-        return captured_square
+        return captured_square, captured_piece_announcement
+
+    def _legal_pawn_capture_moves(self):
+        """Return legal pawn captures for the active player in the true position."""
+        pawn_squares = self._board.pieces(chess.PAWN, self._board.turn)
+        return [
+            move
+            for move in self._board.legal_moves
+            if move.from_square in pawn_squares and self._board.is_capture(move)
+        ]
+
+    def _count_legal_pawn_captures(self):
+        """Count legal pawn captures for the active player in the true position."""
+        return len(self._legal_pawn_capture_moves())
 
     def _has_any_pawn_captures(self):
         """
@@ -304,12 +329,7 @@ class BerkeleyGame(object):
             bool: True if there are any legal pawn capture moves available,
                  False if no pawn captures are possible.
         """
-        pawn_squares = self._board.pieces(chess.PAWN, self._board.turn)
-        for move in self._board.legal_moves:
-            if move.from_square in pawn_squares:
-                if self._board.is_capture(move):
-                    return True
-        return False
+        return self._count_legal_pawn_captures() > 0
 
     def _is_legal_move(self, move):
         """
@@ -440,6 +460,16 @@ class BerkeleyGame(object):
     def ruleset_id(self):
         """Explicit ruleset identifier for snapshot and serialization APIs."""
         return self._ruleset.identifier
+
+    @property
+    def current_turn_pawn_tries(self):
+        """
+        Get the Wild 16 style pawn-capture count for the current player to move.
+
+        Returns:
+            int or None: Legal pawn-capture count when the active ruleset announces it.
+        """
+        return self._ruleset.next_turn_pawn_tries(self)
 
     @property
     def must_use_pawns(self):

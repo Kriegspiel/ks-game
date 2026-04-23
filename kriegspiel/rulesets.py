@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import chess
+
 from kriegspiel.move import KriegspielAnswer as KSAnswer
+from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import QuestionAnnouncement as QA
@@ -12,6 +15,7 @@ from kriegspiel.move import QuestionAnnouncement as QA
 
 RULESET_BERKELEY = "berkeley"
 RULESET_BERKELEY_ANY = "berkeley_any"
+RULESET_WILD16 = "wild16"
 
 
 @dataclass(frozen=True)
@@ -26,10 +30,18 @@ class BerkeleyRulesetPolicy:
 
     identifier: str
     allow_ask_any: bool
+    invalid_common_attempt_result: MA
+    discard_illegal_attempts: bool
+    public_illegal_attempts: bool
+    typed_capture_announcements: bool
+    announce_next_turn_pawn_tries: bool
 
     def add_special_questions(self, possibilities: set[KSMove]) -> None:
         if self.allow_ask_any:
             possibilities.add(KSMove(QA.ASK_ANY))
+
+    def classify_impossible_common_attempt(self) -> MA:
+        return self.invalid_common_attempt_result
 
     def handle_special_question(self, game, move: KSMove):
         if move.question_type != QA.ASK_ANY:
@@ -49,6 +61,32 @@ class BerkeleyRulesetPolicy:
             pawn_captures = set(game._generate_possible_pawn_captures())
             game._set_possible_to_ask(game._possible_to_ask_set - pawn_captures)
 
+    def should_record_opponent_answer(self, move: KSMove, answer: KSAnswer) -> bool:
+        if answer.main_announcement == MA.IMPOSSIBLE_TO_ASK:
+            return False
+        if answer.main_announcement == MA.ILLEGAL_MOVE and not self.public_illegal_attempts:
+            return False
+        return True
+
+    def should_discard_attempt(self, move: KSMove, answer: KSAnswer) -> bool:
+        if answer.main_announcement == MA.NO_ANY:
+            return True
+        if answer.main_announcement == MA.ILLEGAL_MOVE:
+            return self.discard_illegal_attempts
+        return False
+
+    def captured_piece_announcement_for(self, captured_piece) -> CPA | None:
+        if not self.typed_capture_announcements or captured_piece is None:
+            return None
+        if captured_piece.piece_type == chess.PAWN:
+            return CPA.PAWN
+        return CPA.PIECE
+
+    def next_turn_pawn_tries(self, game) -> int | None:
+        if not self.announce_next_turn_pawn_tries or game.game_over:
+            return None
+        return game._count_legal_pawn_captures()
+
 
 def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None = None) -> BerkeleyRulesetPolicy:
     """Resolve legacy `any_rule` calls into an explicit ruleset policy."""
@@ -63,7 +101,33 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             )
 
     if ruleset == RULESET_BERKELEY_ANY:
-        return BerkeleyRulesetPolicy(identifier=ruleset, allow_ask_any=True)
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=True,
+            invalid_common_attempt_result=MA.IMPOSSIBLE_TO_ASK,
+            discard_illegal_attempts=True,
+            public_illegal_attempts=True,
+            typed_capture_announcements=False,
+            announce_next_turn_pawn_tries=False,
+        )
     if ruleset == RULESET_BERKELEY:
-        return BerkeleyRulesetPolicy(identifier=ruleset, allow_ask_any=False)
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=False,
+            invalid_common_attempt_result=MA.IMPOSSIBLE_TO_ASK,
+            discard_illegal_attempts=True,
+            public_illegal_attempts=True,
+            typed_capture_announcements=False,
+            announce_next_turn_pawn_tries=False,
+        )
+    if ruleset == RULESET_WILD16:
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=False,
+            invalid_common_attempt_result=MA.ILLEGAL_MOVE,
+            discard_illegal_attempts=False,
+            public_illegal_attempts=False,
+            typed_capture_announcements=True,
+            announce_next_turn_pawn_tries=True,
+        )
     raise ValueError(f"Unsupported ruleset: {ruleset!r}")

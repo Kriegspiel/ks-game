@@ -8,7 +8,7 @@ import chess
 from types import SimpleNamespace
 
 from kriegspiel.move import (
-    QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement,
+    QuestionAnnouncement, MainAnnouncement, SpecialCaseAnnouncement, CapturedPieceAnnouncement,
     KriegspielMove, KriegspielAnswer, KriegspielScoresheet
 )
 from kriegspiel.berkeley import BerkeleyGame
@@ -26,6 +26,7 @@ from kriegspiel.serialization import (
 )
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
+from kriegspiel.rulesets import RULESET_WILD16
 
 
 class TestChessMoveSerializer:
@@ -161,7 +162,9 @@ class TestKriegspielAnswerSerializer:
         expected = {
             "main_announcement": "REGULAR_MOVE",
             "capture_at_square": None,
+            "captured_piece_announcement": None,
             "special_announcement": "NONE",
+            "next_turn_pawn_tries": None,
             "check_1": None,
             "check_2": None
         }
@@ -173,7 +176,9 @@ class TestKriegspielAnswerSerializer:
         expected = {
             "main_announcement": "CAPTURE_DONE",
             "capture_at_square": 28,
+            "captured_piece_announcement": None,
             "special_announcement": "NONE",
+            "next_turn_pawn_tries": None,
             "check_1": None,
             "check_2": None
         }
@@ -186,7 +191,9 @@ class TestKriegspielAnswerSerializer:
         expected = {
             "main_announcement": "REGULAR_MOVE",
             "capture_at_square": None,
+            "captured_piece_announcement": None,
             "special_announcement": "CHECK_RANK",
+            "next_turn_pawn_tries": None,
             "check_1": None,
             "check_2": None
         }
@@ -201,11 +208,31 @@ class TestKriegspielAnswerSerializer:
         expected = {
             "main_announcement": "REGULAR_MOVE",
             "capture_at_square": None,
+            "captured_piece_announcement": None,
             "special_announcement": "CHECK_DOUBLE",
+            "next_turn_pawn_tries": None,
             "check_1": "CHECK_RANK",
             "check_2": "CHECK_FILE"
         }
         assert result == expected
+
+    def test_serialize_wild16_answer_fields(self):
+        answer = KriegspielAnswer(
+            MainAnnouncement.CAPTURE_DONE,
+            capture_at_square=28,
+            captured_piece_announcement=CapturedPieceAnnouncement.PAWN,
+            next_turn_pawn_tries=2,
+        )
+
+        assert serialize_kriegspiel_answer(answer) == {
+            "main_announcement": "CAPTURE_DONE",
+            "capture_at_square": 28,
+            "captured_piece_announcement": "PAWN",
+            "special_announcement": "NONE",
+            "next_turn_pawn_tries": 2,
+            "check_1": None,
+            "check_2": None,
+        }
     
     def test_deserialize_regular_move_answer(self):
         data = {
@@ -245,6 +272,24 @@ class TestKriegspielAnswerSerializer:
                                                       [SpecialCaseAnnouncement.CHECK_RANK,
                                                        SpecialCaseAnnouncement.CHECK_FILE]))
         assert result == expected
+
+    def test_deserialize_wild16_answer_fields(self):
+        data = {
+            "main_announcement": "CAPTURE_DONE",
+            "capture_at_square": 28,
+            "captured_piece_announcement": "PIECE",
+            "special_announcement": "NONE",
+            "next_turn_pawn_tries": 3,
+            "check_1": None,
+            "check_2": None,
+        }
+
+        assert deserialize_kriegspiel_answer(data) == KriegspielAnswer(
+            MainAnnouncement.CAPTURE_DONE,
+            capture_at_square=28,
+            captured_piece_announcement=CapturedPieceAnnouncement.PIECE,
+            next_turn_pawn_tries=3,
+        )
     
     def test_kriegspiel_answer_roundtrip(self):
         answers = [
@@ -354,6 +399,13 @@ class TestBerkeleyGameSerializer:
         assert result["game_state"]["possible_to_ask"]
         assert "white_scoresheet" in result["game_state"]
         assert "black_scoresheet" in result["game_state"]
+
+    def test_serialize_wild16_game(self):
+        game = BerkeleyGame(ruleset=RULESET_WILD16)
+        result = serialize_berkeley_game(game)
+
+        assert result["game_state"]["ruleset_id"] == RULESET_WILD16
+        assert result["game_state"]["any_rule"] is False
     
     def test_serialize_game_with_moves(self):
         game = BerkeleyGame(any_rule=True)
@@ -422,6 +474,22 @@ class TestBerkeleyGameSerializer:
         # Check that scoresheets are preserved
         assert len(deserialized._whites_scoresheet.moves_own) == len(game._whites_scoresheet.moves_own)
         assert len(deserialized._blacks_scoresheet.moves_own) == len(game._blacks_scoresheet.moves_own)
+
+    def test_wild16_roundtrip_preserves_private_illegal_attempts(self):
+        game = BerkeleyGame(ruleset=RULESET_WILD16)
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e5")))
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")))
+        serialized = serialize_berkeley_game(game)
+        deserialized = deserialize_berkeley_game(serialized)
+
+        assert deserialized.ruleset_id == RULESET_WILD16
+        assert deserialized._whites_scoresheet.moves_own[0][0][1] == KriegspielAnswer(MainAnnouncement.ILLEGAL_MOVE)
+        assert len(deserialized._blacks_scoresheet.moves_opponent) == 1
+        assert len(deserialized._blacks_scoresheet.moves_opponent[0]) == 1
+        assert deserialized._blacks_scoresheet.moves_opponent[0][0][1] == KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            next_turn_pawn_tries=0,
+        )
 
     def test_deserialize_rejects_missing_move_stack(self):
         game = BerkeleyGame(any_rule=True)
