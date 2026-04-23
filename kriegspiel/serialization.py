@@ -71,7 +71,6 @@ from kriegspiel.snapshot import move_stack_from_scoresheets
 # Import version from main module
 from kriegspiel import __version__
 
-LEGACY_SERIALIZATION_SCHEMA_VERSION = 2
 PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 3
 SERIALIZATION_SCHEMA_VERSION = 4
 
@@ -300,12 +299,11 @@ def serialize_berkeley_game(game) -> Dict[str, Any]:
 def deserialize_berkeley_game(data: Dict[str, Any]):
     """Deserialize dictionary to BerkeleyGame."""
     try:
-        # Check schema compatibility. Legacy payloads used `version` instead.
+        # Check schema compatibility. Live data is schema 3; new writes use schema 4.
         schema_version = data.get("schema_version")
         if schema_version is None:
-            schema_version = LEGACY_SERIALIZATION_SCHEMA_VERSION if "version" in data else "unknown"
+            raise UnsupportedVersionError("Missing schema_version")
         if schema_version not in {
-            LEGACY_SERIALIZATION_SCHEMA_VERSION,
             PREVIOUS_SERIALIZATION_SCHEMA_VERSION,
             SERIALIZATION_SCHEMA_VERSION,
         }:
@@ -332,11 +330,9 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
         if ruleset_id is None:
             ruleset_id = "berkeley_any" if any_rule else "berkeley"
 
-        possible_to_ask = None
-        if schema_version in {PREVIOUS_SERIALIZATION_SCHEMA_VERSION, SERIALIZATION_SCHEMA_VERSION}:
-            if "possible_to_ask" not in game_state:
-                raise MalformedDataError("Missing possible_to_ask in BerkeleyGame data")
-            possible_to_ask = tuple(deserialize_possible_to_ask(game_state["possible_to_ask"]))
+        if "possible_to_ask" not in game_state:
+            raise MalformedDataError("Missing possible_to_ask in BerkeleyGame data")
+        possible_to_ask = tuple(deserialize_possible_to_ask(game_state["possible_to_ask"]))
 
         snapshot = BerkeleyGameSnapshot(
             ruleset_id=ruleset_id,

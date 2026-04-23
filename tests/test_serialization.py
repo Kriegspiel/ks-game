@@ -617,7 +617,7 @@ class TestEdgeCases:
         assert deserialized.ruleset_id == RULESET_BERKELEY_ANY
         assert deserialized.any_rule is True
 
-    def test_deserialize_legacy_version_field_still_works(self):
+    def test_deserialize_rejects_legacy_version_field_without_schema_version(self):
         game = BerkeleyGame(any_rule=True)
         result = serialize_berkeley_game(game)
         result.pop("schema_version")
@@ -625,10 +625,8 @@ class TestEdgeCases:
         result["game_state"].pop("ruleset_id")
         result["game_state"].pop("possible_to_ask")
 
-        deserialized = deserialize_berkeley_game(result)
-
-        assert deserialized.ruleset_id == RULESET_BERKELEY_ANY
-        assert deserialized.any_rule is True
+        with pytest.raises(UnsupportedVersionError, match="Missing schema_version"):
+            deserialize_berkeley_game(result)
     
     def test_serialize_game_after_any_question(self):
         game = BerkeleyGame(any_rule=True)

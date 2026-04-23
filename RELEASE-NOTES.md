@@ -1,5 +1,9 @@
 # Release Notes
 
+## Kriegspiel v. 1.2.6
+
+- **Serialization**: removed support for pre-canonical payloads that used the old top-level `version` field instead of `schema_version`; schema `3` remains supported for current stored games and schema `4` remains the writer format
+
 ## Kriegspiel v. 1.2.5
 
 - **Ruleset Foundation**: Berkeley-family rule behavior now goes through an explicit ruleset policy layer, which keeps the hidden-board engine ready for future Cincinnati / Wild 16 support without hard-coding every variant into `BerkeleyGame`
