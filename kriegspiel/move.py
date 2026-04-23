@@ -4,6 +4,12 @@ import enum
 
 import chess
 
+_QUESTION_SORT_ORDER = {
+    "ASK_ANY": 0,
+    "COMMON": 1,
+    "NONE": 2,
+}
+
 
 @enum.unique
 class QuestionAnnouncement(enum.Enum):
@@ -62,6 +68,25 @@ class KriegspielMove(object):
         """
         return f"<KriegspielMove: {self.question_type}, move={self.chess_move}>"
 
+    def _move_key(self):
+        if self.chess_move is None:
+            return None
+        return (
+            self.chess_move.from_square,
+            self.chess_move.to_square,
+            self.chess_move.promotion,
+            self.chess_move.drop,
+        )
+
+    def _identity_key(self):
+        return (self.question_type, self.chess_move)
+
+    def _sort_key(self):
+        return (
+            _QUESTION_SORT_ORDER.get(self.question_type.name, self.question_type.value),
+            self._move_key(),
+        )
+
     def __repr__(self):
         """
         Return detailed string representation of the move.
@@ -84,11 +109,8 @@ class KriegspielMove(object):
             True if moves are equivalent, False otherwise.
         """
         if not isinstance(other, KriegspielMove):
-            return False
-        if self.chess_move == other.chess_move and self.question_type == other.question_type:
-            return True
-        else:
-            return False
+            return NotImplemented
+        return self._identity_key() == other._identity_key()
 
     def __ne__(self, other):
         """
@@ -100,13 +122,16 @@ class KriegspielMove(object):
         Returns:
             True if moves are not equivalent, False if they are equal.
         """
-        return not self.__eq__(other)
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return NotImplemented
+        return not result
 
     def __lt__(self, other):
         """
         Compare moves for sorting purposes.
         
-        Comparison is based on string representation for consistent ordering.
+        Comparison is based on structured move identity for stable ordering.
         
         Args:
             other: Another KriegspielMove to compare with.
@@ -114,19 +139,21 @@ class KriegspielMove(object):
         Returns:
             True if this move should be sorted before the other.
         """
-        return self.__str__() < other.__str__()
+        if not isinstance(other, KriegspielMove):
+            return NotImplemented
+        return self._sort_key() < other._sort_key()
 
     def __hash__(self):
         """
         Generate hash value for the move.
         
         Enables KriegspielMove objects to be used in sets and as dictionary keys.
-        Hash is based on string representation for consistency with equality.
+        Hash is based on the same structured identity used for equality.
         
         Returns:
             Integer hash value.
         """
-        return hash(self.__str__())
+        return hash(self._identity_key())
 
 
 @enum.unique
@@ -371,6 +398,24 @@ class KriegspielAnswer(object):
 
         return f'<KriegspielAnswer: {self._main_announcement}, {", ".join(main_data)}>'
 
+    def _identity_key(self):
+        return (
+            self._main_announcement,
+            self._capture_at_square,
+            self._special_announcement,
+            self._check_1,
+            self._check_2,
+        )
+
+    def _sort_key(self):
+        return (
+            self._main_announcement.value,
+            self._capture_at_square,
+            self._special_announcement.value,
+            self._check_1.value if self._check_1 is not None else -1,
+            self._check_2.value if self._check_2 is not None else -1,
+        )
+
     def __repr__(self):
         """
         Return detailed string representation of the answer.
@@ -392,7 +437,9 @@ class KriegspielAnswer(object):
         Returns:
             True if answers are equivalent, False otherwise.
         """
-        return self.__str__() == other.__str__()
+        if not isinstance(other, KriegspielAnswer):
+            return NotImplemented
+        return self._identity_key() == other._identity_key()
 
     def __ne__(self, other):
         """
@@ -404,13 +451,16 @@ class KriegspielAnswer(object):
         Returns:
             True if answers are not equivalent, False if they are equal.
         """
-        return not self.__eq__(other)
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return NotImplemented
+        return not result
 
     def __lt__(self, other):
         """
         Compare answers for sorting purposes.
         
-        Comparison is based on string representation for consistent ordering.
+        Comparison is based on structured answer identity for stable ordering.
         
         Args:
             other: Another KriegspielAnswer to compare with.
@@ -418,19 +468,21 @@ class KriegspielAnswer(object):
         Returns:
             True if this answer should be sorted before the other.
         """
-        return self.__str__() < other.__str__()
+        if not isinstance(other, KriegspielAnswer):
+            return NotImplemented
+        return self._sort_key() < other._sort_key()
 
     def __hash__(self):
         """
         Generate hash value for the answer.
         
         Enables KriegspielAnswer objects to be used in sets and as dictionary keys.
-        Hash is based on string representation for consistency with equality.
+        Hash is based on the same structured identity used for equality.
         
         Returns:
             Integer hash value.
         """
-        return hash(self.__str__())
+        return hash(self._identity_key())
 
 
 class KriegspielScoresheet:

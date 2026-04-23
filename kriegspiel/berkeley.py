@@ -47,6 +47,8 @@ class BerkeleyGame(object):
         self._board = chess.Board()
         self._must_use_pawns = False
         self._game_over = False
+        self._possible_to_ask = []
+        self._possible_to_ask_set = set()
         self._generate_possible_to_ask_list()
         self._whites_scoresheet = KSSS(chess.WHITE)
         self._blacks_scoresheet = KSSS(chess.BLACK)
@@ -91,19 +93,16 @@ class BerkeleyGame(object):
         # As you MUST do a pawn-capture move when you got positive
         # response from the referee on ASK_ANY.
         if result.main_announcement == MA.HAS_ANY:
-            self._possible_to_ask = list(
-                # Yes, it could be simplified from the first glance, but it will be incorrect.
-                # As some pawn moves were alredy potentially asked.
-                set(self._possible_to_ask)
-                - (set(self._possible_to_ask) - set(self._generate_possible_pawn_captures()))
-            )
+            pawn_captures = set(self._generate_possible_pawn_captures())
+            self._set_possible_to_ask(self._possible_to_ask_set & pawn_captures)
         # Remove pawn captures if there is no pawn captures.
         if result.main_announcement == MA.NO_ANY:
-            self._possible_to_ask = list(set(self._possible_to_ask) - set(self._generate_possible_pawn_captures()))
+            pawn_captures = set(self._generate_possible_pawn_captures())
+            self._set_possible_to_ask(self._possible_to_ask_set - pawn_captures)
         # Possible to ask about a move only once
         if result.main_announcement in (MA.ILLEGAL_MOVE, MA.NO_ANY):
             # For `has any` already deleted
-            self._possible_to_ask.remove(move)
+            self._discard_possible_to_ask(move)
         return result
 
     def _ask_for(self, move):
@@ -111,7 +110,7 @@ class BerkeleyGame(object):
         return (MoveAnnouncement, captured_square, SpecialCaseAnnouncement)
         """
         # If a player asks for a non-sense move. Stop it.
-        if move not in self.possible_to_ask:
+        if move not in self._possible_to_ask_set:
             return KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
         if move.question_type == QA.COMMON:
@@ -326,9 +325,9 @@ class BerkeleyGame(object):
         Returns:
             bool: True if the move is legal, False otherwise.
         """
-        return move in self._board.legal_moves
+        return self._board.is_legal(move)
 
-    def _prepare_players_board(self):
+    def _build_players_board(self):
         """
         Create the board state visible to the current player.
         
@@ -338,12 +337,12 @@ class BerkeleyGame(object):
         """
         # Make a copy of the FULL board (referee's board)
         players_board = self._board.copy(stack=False)
+        active_color = self._board.turn
         # Remove all pieces belonging not to the current player
-        for square in chess.SQUARES:
-            if players_board.piece_at(square) is not None:
-                if players_board.piece_at(square).color is not self._board.turn:
-                    players_board.remove_piece_at(square)
-        self._players_board = players_board
+        for square, piece in self._board.piece_map().items():
+            if piece.color != active_color:
+                players_board.remove_piece_at(square)
+        return players_board
 
     def _generate_possible_pawn_captures(self):
         """
@@ -354,23 +353,38 @@ class BerkeleyGame(object):
                                 captures and captures with promotion to all piece types.
         """
         possibilities = list()
-        for square in list(self._board.pieces(chess.PAWN, self._board.turn)):
-            for attacked in list(self._players_board.attacks(square)):
-                if self._players_board.piece_at(attacked) is None:
-                    if chess.square_rank(attacked) in (0, 7):
-                        # If capture is promotion for pawn.
-                        possibilities.extend(
-                            [
-                                KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.QUEEN)),
-                                KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.BISHOP)),
-                                KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.KNIGHT)),
-                                KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.ROOK)),
-                            ]
-                        )
-                    else:
-                        # If capture is not promotion for pawn
-                        possibilities.append(KSMove(QA.COMMON, chess.Move(square, attacked)))
+        active_color = self._board.turn
+        for square in self._board.pieces(chess.PAWN, active_color):
+            for attacked in self._board.attacks(square):
+                if self._board.color_at(attacked) == active_color:
+                    continue
+                if chess.square_rank(attacked) in (0, 7):
+                    # If capture is promotion for pawn.
+                    possibilities.extend(
+                        [
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.QUEEN)),
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.BISHOP)),
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.KNIGHT)),
+                            KSMove(QA.COMMON, chess.Move(square, attacked, promotion=chess.ROOK)),
+                        ]
+                    )
+                else:
+                    # If capture is not promotion for pawn
+                    possibilities.append(KSMove(QA.COMMON, chess.Move(square, attacked)))
         return possibilities
+
+    def _set_possible_to_ask(self, possibilities):
+        self._possible_to_ask_set = set(possibilities)
+        self._possible_to_ask = list(self._possible_to_ask_set)
+
+    def _discard_possible_to_ask(self, move):
+        if move not in self._possible_to_ask_set:
+            return
+        self._possible_to_ask_set.remove(move)
+        try:
+            self._possible_to_ask.remove(move)
+        except ValueError:  # pragma: no cover
+            self._possible_to_ask = list(self._possible_to_ask_set)
 
     def _generate_possible_to_ask_list(self):
         """
@@ -384,25 +398,21 @@ class BerkeleyGame(object):
             This method has known performance issues with complex positions and
             may be slow in games with many possible moves.
         """
-        # Very slow. :(
         if self._game_over:
-            self._possible_to_ask = list()
+            self._set_possible_to_ask(set())
             return
         # Make the board that the current player sees
-        self._prepare_players_board()
-        # Now players_board is equal to the board that the current player sees
-        possibilities = list()
+        players_board = self._build_players_board()
         # First collect all possible moves keeping in mind castling rules.
         # Castling rules are kept as it is generated by the referee's board,
         # which contains info about previous moves.
-        possibilities.extend([KSMove(QA.COMMON, chess_move) for chess_move in self._players_board.legal_moves])
+        possibilities = {KSMove(QA.COMMON, chess_move) for chess_move in players_board.legal_moves}
         if self._any_rule:
             # Always possible to ask ANY?
-            possibilities.append(KSMove(QA.ASK_ANY))
+            possibilities.add(KSMove(QA.ASK_ANY))
         # Second add possible pawn captures
-        possibilities.extend(self._generate_possible_pawn_captures())
-        # And remove finally — remove duplicates
-        self._possible_to_ask = list(set(possibilities))
+        possibilities.update(self._generate_possible_pawn_captures())
+        self._set_possible_to_ask(possibilities)
 
     @property
     def possible_to_ask(self):
@@ -462,7 +472,7 @@ class BerkeleyGame(object):
             bool: True if the move is in the current list of possible questions,
                  False if it's not allowed or has already been asked.
         """
-        return move in self.possible_to_ask
+        return move in self._possible_to_ask_set
 
     def save_game(self, filename):
         """

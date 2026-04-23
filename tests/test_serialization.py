@@ -412,6 +412,7 @@ class TestBerkeleyGameSerializer:
         assert deserialized._game_over == game._game_over
         assert deserialized.turn == game.turn
         assert sorted(str(move) for move in deserialized.possible_to_ask) == sorted(str(move) for move in game.possible_to_ask)
+        assert all(deserialized.is_possible_to_ask(move) for move in deserialized.possible_to_ask)
         
         # Check that scoresheets are preserved
         assert len(deserialized._whites_scoresheet.moves_own) == len(game._whites_scoresheet.moves_own)
