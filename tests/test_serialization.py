@@ -15,7 +15,7 @@ from kriegspiel.berkeley import BerkeleyGame
 from kriegspiel.serialization import (
     serialize_chess_move, deserialize_chess_move,
     serialize_enum, deserialize_question_announcement, deserialize_main_announcement, 
-    deserialize_special_case_announcement,
+    deserialize_special_case_announcement, deserialize_captured_piece_announcement,
     serialize_kriegspiel_move, deserialize_kriegspiel_move,
     serialize_kriegspiel_answer, deserialize_kriegspiel_answer,
     serialize_kriegspiel_scoresheet, deserialize_kriegspiel_scoresheet,
@@ -82,6 +82,10 @@ class TestEnumSerializer:
     def test_deserialize_special_case_announcement(self):
         assert deserialize_special_case_announcement("NONE") == SpecialCaseAnnouncement.NONE
         assert deserialize_special_case_announcement("CHECK_RANK") == SpecialCaseAnnouncement.CHECK_RANK
+
+    def test_deserialize_captured_piece_announcement_invalid(self):
+        with pytest.raises(MalformedDataError, match="Invalid CapturedPieceAnnouncement"):
+            deserialize_captured_piece_announcement("NOT_A_CAPTURE_KIND")
     
     def test_enum_roundtrip(self):
         enums_to_test = [

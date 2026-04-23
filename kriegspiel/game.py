@@ -1,31 +1,32 @@
 # -*- coding: utf-8 -*-
 
-"""Convenience entrypoint for the Wild 16 Kriegspiel ruleset."""
+"""Generic public entrypoint for the shared Kriegspiel engine."""
 
 from __future__ import annotations
 
 from kriegspiel.berkeley import BerkeleyGame
-from kriegspiel.game import KriegspielGame
 from kriegspiel.move import KriegspielScoresheet as KSSS
-from kriegspiel.rulesets import RULESET_WILD16
 from kriegspiel.serialization import load_game_from_json
 
 
-class Wild16Game(KriegspielGame):
-    """Wild 16 convenience wrapper over the shared Berkeley-family engine."""
+class KriegspielGame(BerkeleyGame):
+    """Neutral public entrypoint for the shared hidden-board Kriegspiel engine.
 
-    def __init__(self):
-        super().__init__(ruleset=RULESET_WILD16)
+    This class uses the same engine as ``BerkeleyGame`` but exposes it through a
+    generic name that fits multiple rulesets. The historical Berkeley-named
+    class remains available for backward compatibility.
+    """
+
+    def __init__(self, any_rule=None, ruleset=None):
+        super().__init__(any_rule=any_rule, ruleset=ruleset)
 
     @classmethod
     def _from_berkeley_game(cls, game):
-        """Rebuild a Wild16Game wrapper from a validated shared-engine instance."""
+        """Rebuild a KriegspielGame from a validated shared-engine instance."""
         if not isinstance(game, BerkeleyGame):
             raise TypeError("game must be a BerkeleyGame")
-        if game.ruleset_id != RULESET_WILD16:
-            raise ValueError("game must use the wild16 ruleset")
 
-        instance = cls()
+        instance = cls(ruleset=game.ruleset_id)
         instance._board = game._board.copy(stack=True)
         instance._must_use_pawns = game._must_use_pawns
         instance._game_over = game._game_over
@@ -37,10 +38,10 @@ class Wild16Game(KriegspielGame):
 
     @classmethod
     def from_snapshot(cls, snapshot):
-        """Build a Wild16Game from a validated snapshot."""
+        """Build a KriegspielGame from a validated snapshot."""
         return cls._from_berkeley_game(BerkeleyGame.from_snapshot(snapshot))
 
     @classmethod
     def load_game(cls, filename):
-        """Load a Wild 16 game from disk."""
+        """Load a shared-engine Kriegspiel game from disk."""
         return cls._from_berkeley_game(load_game_from_json(filename))

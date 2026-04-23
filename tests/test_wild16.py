@@ -56,6 +56,17 @@ def test_wild16_illegal_attempt_is_private_to_mover():
     assert g._blacks_scoresheet.moves_opponent == []
 
 
+def test_wild16_black_illegal_attempt_is_private_to_mover():
+    g = Wild16Game()
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+
+    result = g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E2)))
+
+    assert result == KSAnswer(MA.ILLEGAL_MOVE)
+    assert g._blacks_scoresheet.moves_own[0][0][1] == KSAnswer(MA.ILLEGAL_MOVE)
+    assert g._whites_scoresheet.moves_opponent == []
+
+
 def test_wild16_hidden_illegal_attempt_stays_repeatable():
     g = _build_hidden_blocker_game()
     move = KSMove(QA.COMMON, chess.Move(chess.C1, chess.H6))
