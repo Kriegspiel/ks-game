@@ -1,5 +1,11 @@
 # Release Notes
 
+## Kriegspiel v. 1.3.2
+
+- **Public API**: added `kriegspiel.game.KriegspielGame` and package-level exports so the shared engine now has a neutral, intuitive entrypoint instead of only Berkeley-named imports
+- **Compatibility**: kept `BerkeleyGame` as a backward-compatible public name and left existing serialized game data compatible
+- **Coverage**: tightened branch coverage around public formatting, ruleset policy edges, shared snapshot helpers, and shared-engine wrapper behavior
+
 ## Kriegspiel v. 1.3.1
 
 - **Wild 16 Entry Point**: added `kriegspiel.wild16.Wild16Game` as a dedicated convenience wrapper over the shared hidden-board engine

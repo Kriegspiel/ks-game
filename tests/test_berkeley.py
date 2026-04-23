@@ -935,6 +935,12 @@ def test_if_berkeley_wo_any():
     assert g.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
+def test_get_captured_piece_returns_none_for_non_capture():
+    g = BerkeleyGame()
+
+    assert g._get_captured_piece(chess.Move.from_uci("e2e4")) is None
+
+
 def test_snapshot_roundtrip_preserves_ruleset_and_questions():
     g = BerkeleyGame(ruleset=RULESET_BERKELEY_ANY)
     g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))

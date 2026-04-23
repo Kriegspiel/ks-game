@@ -21,13 +21,12 @@ HALFMOVE_CLOCK_LIMIT = 2000
 
 class BerkeleyGame(object):
     """
-    Main class for Berkeley-family Kriegspiel variants.
+    Backward-compatible Berkeley-named entrypoint for the shared engine.
 
     The hidden-board referee engine is shared here, while rule-specific behavior
     such as the Berkeley `ASK_ANY` extension is delegated to a ruleset policy.
-    Today this still ships the classic Berkeley and Berkeley+Any variants, but
-    the policy seam keeps future Cincinnati / Wild 16 support from being wired
-    directly into the engine core.
+    New code can use `KriegspielGame` for a neutral public name, while this
+    class remains stable for Berkeley-focused callers and older integrations.
 
     Communication with this class must be in the form of questions —
     KriegspielMove(s) with QuestionAnnouncement(s).
@@ -247,12 +246,15 @@ class BerkeleyGame(object):
             if self._board.is_insufficient_material():
                 return SCA.DRAW_INSUFFICIENT
             if self._board.is_checkmate():
-                if self._board.result() == "1-0":
+                result = self._board.result()
+                if result == "1-0":
                     return SCA.CHECKMATE_WHITE_WINS
-                elif self._board.result() == "0-1":
+                if result == "0-1":
                     return SCA.CHECKMATE_BLACK_WINS
+                raise RuntimeError("Unexpected checkmate result")  # pragma: no cover
             if self._board.halfmove_clock == HALFMOVE_CLOCK_LIMIT:
                 return SCA.DRAW_TOOMANYREVERSIBLEMOVES
+            raise RuntimeError("Expected a terminal announcement for a finished game")  # pragma: no cover
 
         if self._board.is_check():
             sq = self._board.pieces(chess.KING, self._board.turn)

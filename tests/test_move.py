@@ -358,6 +358,20 @@ def test_ksanswer_str_with_double_check_payload():
     )
 
 
+def test_ksanswer_str_with_capture_payload_and_no_double_check():
+    answer = KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.E4,
+        captured_piece_announcement=CPA.PAWN,
+    )
+
+    assert str(answer) == (
+        "<KriegspielAnswer: MainAnnouncement.CAPTURE_DONE, "
+        "capture_at=e4, captured_piece=CapturedPieceAnnouncement.PAWN, "
+        "special_case=SpecialCaseAnnouncement.NONE, next_turn_pawn_tries=None>"
+    )
+
+
 @pytest.mark.unit
 def test_ksss_empty_own_moves():
     a = KSSS(chess.WHITE)

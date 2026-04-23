@@ -15,17 +15,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from kriegspiel.berkeley import BerkeleyGame
+from kriegspiel.game import KriegspielGame
 from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import QuestionAnnouncement as QA
 
 
-def build_initial() -> BerkeleyGame:
-    return BerkeleyGame()
+def build_initial() -> KriegspielGame:
+    return KriegspielGame()
 
 
-def build_midgame() -> BerkeleyGame:
-    game = BerkeleyGame()
+def build_midgame() -> KriegspielGame:
+    game = KriegspielGame()
     opening_moves = [
         (chess.E2, chess.E4), (chess.E7, chess.E5),
         (chess.G1, chess.F3), (chess.B8, chess.C6),
@@ -40,8 +40,8 @@ def build_midgame() -> BerkeleyGame:
     return game
 
 
-def build_hidden_blocker() -> BerkeleyGame:
-    game = BerkeleyGame(any_rule=False)
+def build_hidden_blocker() -> KriegspielGame:
+    game = KriegspielGame(any_rule=False)
     game._board.clear()
     game._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
     game._board.set_piece_at(chess.E8, chess.Piece(chess.KING, chess.BLACK))
@@ -51,8 +51,8 @@ def build_hidden_blocker() -> BerkeleyGame:
     return game
 
 
-def build_long_game() -> BerkeleyGame:
-    game = BerkeleyGame()
+def build_long_game() -> KriegspielGame:
+    game = KriegspielGame()
     for _ in range(40):
         game.ask_for(KSMove(QA.COMMON, chess.Move(chess.G1, chess.F3)))
         game.ask_for(KSMove(QA.COMMON, chess.Move(chess.G8, chess.F6)))
@@ -69,7 +69,7 @@ SCENARIOS = {
 }
 
 
-def benchmark(game: BerkeleyGame, iterations: int, rounds: int) -> tuple[list[float], int]:
+def benchmark(game: KriegspielGame, iterations: int, rounds: int) -> tuple[list[float], int]:
     run_times = []
     askable_count = len(game.possible_to_ask)
     for _ in range(rounds):
@@ -83,7 +83,7 @@ def benchmark(game: BerkeleyGame, iterations: int, rounds: int) -> tuple[list[fl
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Benchmark BerkeleyGame move generation")
+    parser = argparse.ArgumentParser(description="Benchmark KriegspielGame move generation")
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="initial")
     parser.add_argument("--iterations", type=int, default=2000)
     parser.add_argument("--rounds", type=int, default=5)
