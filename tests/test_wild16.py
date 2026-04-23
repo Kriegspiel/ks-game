@@ -143,8 +143,8 @@ def test_wild16_from_snapshot_rejects_other_ruleset():
 
 
 def test_wild16_private_helper_rejects_non_game():
-    with pytest.raises(TypeError, match="BerkeleyGame"):
-        Wild16Game._from_berkeley_game("not-a-game")
+    with pytest.raises(TypeError, match="KriegspielGame"):
+        Wild16Game._from_kriegspiel_game("not-a-game")
 
 
 def test_wild16_load_game_returns_variant_instance():
@@ -177,3 +177,7 @@ def test_wild16_load_game_rejects_other_ruleset():
             Wild16Game.load_game(filename)
     finally:
         os.unlink(filename)
+
+
+def test_wild16_legacy_helper_alias_still_exists():
+    assert Wild16Game._from_berkeley_game.__func__ is Wild16Game._from_kriegspiel_game.__func__

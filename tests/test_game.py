@@ -16,6 +16,7 @@ from kriegspiel import QuestionAnnouncement as QA
 from kriegspiel import Wild16Game
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
+from kriegspiel.snapshot import KriegspielGameSnapshot
 from kriegspiel.snapshot import ScoresheetSnapshot
 from kriegspiel.snapshot import move_stack_from_scoresheets
 from kriegspiel.move import KriegspielAnswer as KSAnswer
@@ -58,16 +59,28 @@ def test_generic_game_load_game_returns_generic_class():
     assert restored._board.fen() == game._board.fen()
 
 
-def test_generic_game_helper_rejects_non_game():
-    with pytest.raises(TypeError, match="BerkeleyGame"):
-        KriegspielGame._from_berkeley_game("not-a-game")
+def test_generic_game_from_snapshot_rejects_wrong_type():
+    with pytest.raises(TypeError, match="KriegspielGameSnapshot"):
+        KriegspielGame.from_snapshot("not-a-snapshot")
 
 
 def test_berkeley_name_remains_available():
     game = BerkeleyGame(any_rule=False)
 
     assert isinstance(game, BerkeleyGame)
+    assert isinstance(game, KriegspielGame)
     assert game.ruleset_id == RULESET_BERKELEY
+
+
+def test_berkeley_game_is_wrapper_subclass():
+    assert issubclass(BerkeleyGame, KriegspielGame)
+    assert not issubclass(KriegspielGame, BerkeleyGame)
+
+
+def test_generic_snapshot_alias_is_exported():
+    snapshot = KriegspielGame().snapshot()
+
+    assert isinstance(snapshot, KriegspielGameSnapshot)
 
 
 def test_move_stack_from_scoresheets_handles_black_only_turns():
