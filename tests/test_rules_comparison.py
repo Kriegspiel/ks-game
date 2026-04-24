@@ -35,6 +35,10 @@ def _left_pawn_capture_move():
     return KSMove(QA.COMMON, chess.Move(chess.E4, chess.D5))
 
 
+def _right_pawn_capture_move():
+    return KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
+
+
 @pytest.mark.rules
 def test_rules_comparison_position_announces_binary_vs_counted_pawn_captures():
     berkeley_any = _build_rules_comparison_game(BerkeleyGame())
@@ -107,3 +111,52 @@ def test_rules_comparison_berkeley_any_has_any_forces_a_pawn_capture():
     assert game.must_use_pawns is True
     assert game.ask_for(_piece_capture_move()) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
     assert game.ask_for(_left_pawn_capture_move()) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.D5)
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(), id="berkeley-any"),
+        pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+    ],
+)
+def test_rules_comparison_berkeley_family_can_try_pawn_captures_without_announcement(game):
+    game = _build_rules_comparison_game(game)
+
+    assert _left_pawn_capture_move() in game.possible_to_ask
+    assert _right_pawn_capture_move() in game.possible_to_ask
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    ("game", "expected"),
+    [
+        pytest.param(
+            CincinnatiGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_has_pawn_capture=False,
+            ),
+            id="cincinnati",
+        ),
+        pytest.param(
+            Wild16Game(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_pawn_tries=0,
+            ),
+            id="wild16",
+        ),
+    ],
+)
+def test_rules_comparison_automatic_pawn_capture_announcement_allows_pawn_tries(game, expected):
+    game = _build_rules_comparison_game(game)
+
+    assert _left_pawn_capture_move() in game.possible_to_ask
+    assert _right_pawn_capture_move() in game.possible_to_ask
+    assert game.ask_for(_left_pawn_capture_move()) == expected

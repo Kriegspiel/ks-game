@@ -1,5 +1,11 @@
 # Release Notes
 
+## Kriegspiel v. 1.4.1
+
+- **Ruleset Isolation**: Cincinnati and Wild 16 no longer expose hidden pawn-capture tries when their automatic pawn-capture announcement says none are available
+- **Safety**: `ASK_ANY` post-answer constraints are now scoped to Berkeley+Any only, preventing Berkeley-specific state from affecting other rulesets
+- **Testing**: added regression coverage for cross-ruleset action leakage around `ASK_ANY`, Cincinnati binary pawn captures, and Wild 16 pawn-try counts
+
 ## Kriegspiel v. 1.4.0
 
 - **Cincinnati Support**: added first-class `cincinnati` ruleset handling plus a dedicated `kriegspiel.cincinnati.CincinnatiGame` convenience entrypoint

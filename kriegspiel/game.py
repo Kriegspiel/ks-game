@@ -430,7 +430,8 @@ class KriegspielGame(object):
         possibilities = {KSMove(QA.COMMON, chess_move) for chess_move in players_board.legal_moves}
         self._ruleset.add_special_questions(possibilities)
         # Second add possible pawn captures
-        possibilities.update(self._generate_possible_pawn_captures())
+        if self._ruleset.include_pawn_capture_attempts(self):
+            possibilities.update(self._generate_possible_pawn_captures())
         self._set_possible_to_ask(possibilities)
 
     @property
