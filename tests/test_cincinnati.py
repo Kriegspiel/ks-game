@@ -97,6 +97,34 @@ def test_cincinnati_completed_move_can_announce_no_pawn_capture():
     assert g.current_turn_has_pawn_capture is False
 
 
+def test_cincinnati_no_pawn_capture_announcement_blocks_pawn_capture_tries():
+    g = CincinnatiGame()
+
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+    left_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.D5))
+    right_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
+
+    assert g.current_turn_has_pawn_capture is False
+    assert left_try not in g.possible_to_ask
+    assert right_try not in g.possible_to_ask
+    assert g.ask_for(left_try) == KSAnswer(MA.NONSENSE)
+
+
+def test_cincinnati_has_pawn_capture_announcement_allows_non_matching_pawn_tries():
+    g = CincinnatiGame()
+
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
+    legal_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.D5))
+    hidden_empty_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
+
+    assert g.current_turn_has_pawn_capture is True
+    assert legal_try in g.possible_to_ask
+    assert hidden_empty_try in g.possible_to_ask
+    assert g.ask_for(hidden_empty_try) == KSAnswer(MA.ILLEGAL_MOVE)
+
+
 def test_cincinnati_capture_announces_pawn_kind():
     g = CincinnatiGame()
     g._board.clear()

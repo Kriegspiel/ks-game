@@ -42,6 +42,14 @@ class BerkeleyRulesetPolicy:
         if self.allow_ask_any:
             possibilities.add(KSMove(QA.ASK_ANY))
 
+    def include_pawn_capture_attempts(self, game) -> bool:
+        """Return whether hidden pawn-capture tries belong in this prompt."""
+        if self.announce_next_turn_has_pawn_capture:
+            return game._has_any_pawn_captures()
+        if self.announce_next_turn_pawn_tries:
+            return game._count_legal_pawn_captures() > 0
+        return True
+
     def classify_impossible_common_attempt(self) -> MA:
         return self.invalid_common_attempt_result
 
@@ -56,6 +64,8 @@ class BerkeleyRulesetPolicy:
         return KSAnswer(MA.NO_ANY)
 
     def apply_post_answer_constraints(self, game, answer: KSAnswer) -> None:
+        if not self.allow_ask_any:
+            return
         if answer.main_announcement == MA.HAS_ANY:
             pawn_captures = set(game._generate_possible_pawn_captures())
             game._set_possible_to_ask(game._possible_to_ask_set & pawn_captures)

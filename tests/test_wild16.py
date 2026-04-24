@@ -88,6 +88,36 @@ def test_wild16_completed_move_announces_next_turn_pawn_tries():
     assert g.current_turn_pawn_tries == 1
 
 
+def test_wild16_zero_pawn_tries_blocks_pawn_capture_attempts():
+    g = Wild16Game()
+
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E7, chess.E5)))
+    left_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.D5))
+    right_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
+
+    assert g.current_turn_pawn_tries == 0
+    assert left_try not in g.possible_to_ask
+    assert right_try not in g.possible_to_ask
+    assert g.ask_for(left_try) == KSAnswer(MA.ILLEGAL_MOVE)
+    assert len(g._blacks_scoresheet.moves_opponent) == 1
+
+
+def test_wild16_positive_pawn_tries_allow_hidden_pawn_capture_attempts():
+    g = Wild16Game()
+
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.E2, chess.E4)))
+    g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D7, chess.D5)))
+    legal_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.D5))
+    hidden_empty_try = KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
+
+    assert g.current_turn_pawn_tries == 1
+    assert legal_try in g.possible_to_ask
+    assert hidden_empty_try in g.possible_to_ask
+    assert g.ask_for(hidden_empty_try) == KSAnswer(MA.ILLEGAL_MOVE)
+    assert hidden_empty_try in g.possible_to_ask
+
+
 def test_wild16_capture_announces_pawn_kind():
     g = Wild16Game()
     g._board.clear()
