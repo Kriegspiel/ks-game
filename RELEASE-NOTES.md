@@ -1,5 +1,9 @@
 # Release Notes
 
+## Kriegspiel v. 1.4.2
+
+- **Wild 16 Attempts**: failed illegal attempts are now removed from the current askable move list while remaining private from the opponent.
+
 ## Kriegspiel v. 1.4.1
 
 - **Ruleset Isolation**: Cincinnati and Wild 16 no longer expose hidden pawn-capture tries when their automatic pawn-capture announcement says none are available

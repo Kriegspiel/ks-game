@@ -115,7 +115,8 @@ def test_wild16_positive_pawn_tries_allow_hidden_pawn_capture_attempts():
     assert legal_try in g.possible_to_ask
     assert hidden_empty_try in g.possible_to_ask
     assert g.ask_for(hidden_empty_try) == KSAnswer(MA.ILLEGAL_MOVE)
-    assert hidden_empty_try in g.possible_to_ask
+    assert hidden_empty_try not in g.possible_to_ask
+    assert legal_try in g.possible_to_ask
 
 
 def test_wild16_capture_announces_pawn_kind():
