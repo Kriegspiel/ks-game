@@ -13,14 +13,17 @@ from kriegspiel import CincinnatiGame
 from kriegspiel import KriegspielGame
 from kriegspiel import KriegspielMove as KSMove
 from kriegspiel import MainAnnouncement as MA
+from kriegspiel import MaterialSideSummary
+from kriegspiel import PublicMaterialSummary
 from kriegspiel import QuestionAnnouncement as QA
 from kriegspiel import Wild16Game
+from kriegspiel.move import CapturedPieceAnnouncement as CPA
+from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 from kriegspiel.snapshot import KriegspielGameSnapshot
 from kriegspiel.snapshot import ScoresheetSnapshot
 from kriegspiel.snapshot import move_stack_from_scoresheets
-from kriegspiel.move import KriegspielAnswer as KSAnswer
 
 
 def test_generic_game_defaults_to_berkeley_any():
@@ -105,8 +108,131 @@ def test_move_stack_from_scoresheets_handles_black_only_turns():
     assert move_stack_from_scoresheets(white_scoresheet, black_scoresheet) == ("e7e5",)
 
 
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(), id="berkeley-any"),
+        pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+    ],
+)
+def test_public_material_summary_hides_pawn_capture_counts_for_berkeley_family(game):
+    game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e2e4")))
+    game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("d7d5")))
+    game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e4d5")))
+
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=16, pawns_captured=None),
+        black=MaterialSideSummary(pieces_remaining=15, pawns_captured=None),
+    )
+
+
+@pytest.mark.parametrize(
+    ("game", "expected_answer"),
+    [
+        pytest.param(
+            CincinnatiGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PAWN,
+                next_turn_has_pawn_capture=False,
+            ),
+            id="cincinnati",
+        ),
+        pytest.param(
+            Wild16Game(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PAWN,
+                next_turn_pawn_tries=0,
+            ),
+            id="wild16",
+        ),
+    ],
+)
+def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(game, expected_answer):
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=16, pawns_captured=0),
+        black=MaterialSideSummary(pieces_remaining=16, pawns_captured=0),
+    )
+
+    game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e2e4")))
+    game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("d7d5")))
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e4d5"))) == expected_answer
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=16, pawns_captured=0),
+        black=MaterialSideSummary(pieces_remaining=15, pawns_captured=1),
+    )
+
+
+@pytest.mark.parametrize(
+    ("game", "expected_answer"),
+    [
+        pytest.param(
+            CincinnatiGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.A5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_has_pawn_capture=False,
+            ),
+            id="cincinnati",
+        ),
+        pytest.param(
+            Wild16Game(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.A5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_pawn_tries=0,
+            ),
+            id="wild16",
+        ),
+    ],
+)
+def test_public_material_summary_keeps_non_pawn_captures_out_of_pawn_count(game, expected_answer):
+    game._board.clear()
+    game._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.A5, chess.Piece(chess.KNIGHT, chess.BLACK))
+    game._generate_possible_to_ask_list()
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move(chess.A1, chess.A5))) == expected_answer
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=16, pawns_captured=0),
+        black=MaterialSideSummary(pieces_remaining=15, pawns_captured=0),
+    )
+
+
+def test_public_material_summary_does_not_treat_silent_promotion_as_a_pawn_capture():
+    game = Wild16Game()
+    game._board.clear()
+    game._board.set_piece_at(chess.F3, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
+    game._board.set_piece_at(chess.D2, chess.Piece(chess.PAWN, chess.BLACK))
+    game._board.turn = chess.BLACK
+    game._generate_possible_to_ask_list()
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=chess.QUEEN))) == KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.C1,
+        captured_piece_announcement=CPA.PIECE,
+        next_turn_pawn_tries=0,
+    )
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=15, pawns_captured=0),
+        black=MaterialSideSummary(pieces_remaining=16, pawns_captured=0),
+    )
+
+
 def test_package_root_exports_variant_entrypoints():
     assert KriegspielGame.__name__ == "KriegspielGame"
     assert BerkeleyGame.__name__ == "BerkeleyGame"
     assert CincinnatiGame.__name__ == "CincinnatiGame"
     assert Wild16Game.__name__ == "Wild16Game"
+    assert MaterialSideSummary.__name__ == "MaterialSideSummary"
+    assert PublicMaterialSummary.__name__ == "PublicMaterialSummary"

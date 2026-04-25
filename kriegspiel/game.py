@@ -5,6 +5,7 @@ import chess
 from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import QuestionAnnouncement as QA
 
+from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
@@ -12,6 +13,8 @@ from kriegspiel.move import SpecialCaseAnnouncement as SCA
 from kriegspiel.move import KriegspielScoresheet as KSSS
 from kriegspiel.rulesets import resolve_ruleset_policy
 from kriegspiel.snapshot import KriegspielGameSnapshot
+from kriegspiel.snapshot import MaterialSideSummary
+from kriegspiel.snapshot import PublicMaterialSummary
 from kriegspiel.snapshot import move_stack_from_scoresheets
 from kriegspiel.serialization import save_game_to_json, load_game_from_json
 
@@ -491,6 +494,49 @@ class KriegspielGame(object):
             bool or None: Pawn-capture availability when the active ruleset announces it.
         """
         return self._ruleset.next_turn_has_pawn_capture(self)
+
+    @staticmethod
+    def _capture_counts_from_completed_moves(moves_own):
+        captures = 0
+        pawn_captures = 0
+        for turn in moves_own:
+            for _move, answer in turn:
+                if answer.main_announcement != MA.CAPTURE_DONE:
+                    continue
+                captures += 1
+                if answer.captured_piece_announcement == CPA.PAWN:
+                    pawn_captures += 1
+        return captures, pawn_captures
+
+    @property
+    def public_material_summary(self):
+        """
+        Return material information that is public under the active ruleset.
+
+        Total captures are public in all supported rulesets. Cincinnati and
+        Wild 16 additionally announce whether the captured man was a pawn, so
+        pawn-capture counts are exposed there. The summary is derived from
+        completed capture answers instead of true-board pawn counts, because
+        promotion is intentionally silent in those rulesets.
+        """
+        white_captures, white_pawn_captures = self._capture_counts_from_completed_moves(
+            self._whites_scoresheet.moves_own
+        )
+        black_captures, black_pawn_captures = self._capture_counts_from_completed_moves(
+            self._blacks_scoresheet.moves_own
+        )
+        announces_pawn_captures = self._ruleset.typed_capture_announcements
+
+        return PublicMaterialSummary(
+            white=MaterialSideSummary(
+                pieces_remaining=max(0, 16 - black_captures),
+                pawns_captured=black_pawn_captures if announces_pawn_captures else None,
+            ),
+            black=MaterialSideSummary(
+                pieces_remaining=max(0, 16 - white_captures),
+                pawns_captured=white_pawn_captures if announces_pawn_captures else None,
+            ),
+        )
 
     @property
     def must_use_pawns(self):

@@ -1,5 +1,9 @@
 # Release Notes
 
+## Kriegspiel v. 1.4.4
+
+- **Public Material Summary**: added an engine-owned material summary derived from completed public capture announcements, with ruleset-specific pawn-capture counts for Cincinnati and Wild 16.
+
 ## Kriegspiel v. 1.4.3
 
 - **Wild 16 Pawn Tries**: promotion captures now count as one pawn try per capture square instead of one per promotion piece choice.
