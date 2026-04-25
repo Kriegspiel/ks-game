@@ -152,7 +152,7 @@ def test_wild16_pawn_try_count_ignores_captures_that_do_not_escape_check():
 def test_wild16_pawn_try_count_collapses_promotion_choices_to_one_try():
     g = Wild16Game()
     g._board.clear()
-    g._board.set_piece_at(chess.F1, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.F3, chess.Piece(chess.KING, chess.WHITE))
     g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     g._board.set_piece_at(chess.D2, chess.Piece(chess.PAWN, chess.BLACK))
     g._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
