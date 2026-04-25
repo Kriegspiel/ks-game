@@ -28,6 +28,22 @@ class ScoresheetSnapshot:
 
 
 @dataclass(frozen=True)
+class MaterialSideSummary:
+    """Public material status for one color."""
+
+    pieces_remaining: int
+    pawns_captured: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class PublicMaterialSummary:
+    """Public material status derived from referee announcements."""
+
+    white: MaterialSideSummary
+    black: MaterialSideSummary
+
+
+@dataclass(frozen=True)
 class KriegspielGameSnapshot:
     """Serializable, public view of a hidden-board Kriegspiel game."""
 
