@@ -149,6 +149,31 @@ def test_wild16_pawn_try_count_ignores_captures_that_do_not_escape_check():
     assert g.current_turn_pawn_tries == 0
 
 
+def test_wild16_pawn_try_count_collapses_promotion_choices_to_one_try():
+    g = Wild16Game()
+    g._board.clear()
+    g._board.set_piece_at(chess.F3, chess.Piece(chess.KING, chess.WHITE))
+    g._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    g._board.set_piece_at(chess.D2, chess.Piece(chess.PAWN, chess.BLACK))
+    g._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
+    g._board.turn = chess.BLACK
+    g._generate_possible_to_ask_list()
+
+    promotion_captures = {
+        KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=promotion))
+        for promotion in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
+    }
+
+    assert promotion_captures <= set(g.possible_to_ask)
+    assert g.current_turn_pawn_tries == 1
+    assert g.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=chess.QUEEN))) == KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.C1,
+        captured_piece_announcement=CPA.PIECE,
+        next_turn_pawn_tries=0,
+    )
+
+
 def test_wild16_ask_any_is_not_supported():
     g = Wild16Game()
 

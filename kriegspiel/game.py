@@ -321,8 +321,13 @@ class KriegspielGame(object):
         ]
 
     def _count_legal_pawn_captures(self):
-        """Count legal pawn captures for the active player in the true position."""
-        return len(self._legal_pawn_capture_moves())
+        """Count distinct legal pawn-capture attempts in the true position."""
+        return len(
+            {
+                (move.from_square, move.to_square)
+                for move in self._legal_pawn_capture_moves()
+            }
+        )
 
     def _has_any_pawn_captures(self):
         """

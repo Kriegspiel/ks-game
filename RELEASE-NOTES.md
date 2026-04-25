@@ -1,5 +1,9 @@
 # Release Notes
 
+## Kriegspiel v. 1.4.3
+
+- **Wild 16 Pawn Tries**: promotion captures now count as one pawn try per capture square instead of one per promotion piece choice.
+
 ## Kriegspiel v. 1.4.2
 
 - **Wild 16 Attempts**: failed illegal attempts are now removed from the current askable move list while remaining private from the opponent.
