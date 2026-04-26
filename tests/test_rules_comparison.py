@@ -39,6 +39,24 @@ def _right_pawn_capture_move():
     return KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
 
 
+def _build_promotion_capture_game(game):
+    game._board.clear()
+    game._board.set_piece_at(chess.F3, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.D2, chess.Piece(chess.PAWN, chess.BLACK))
+    game._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
+    game._board.turn = chess.BLACK
+    game._generate_possible_to_ask_list()
+    return game
+
+
+def _promotion_capture_moves():
+    return {
+        KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=promotion))
+        for promotion in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
+    }
+
+
 @pytest.mark.rules
 def test_rules_comparison_position_announces_binary_vs_counted_pawn_captures():
     berkeley_any = _build_rules_comparison_game(BerkeleyGame())
@@ -59,6 +77,31 @@ def test_rules_comparison_position_announces_binary_vs_counted_pawn_captures():
     assert cincinnati.current_turn_pawn_tries is None
     assert wild16.current_turn_has_pawn_capture is None
     assert wild16.current_turn_pawn_tries == 2
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    ("game", "expected_has_pawn_capture", "expected_pawn_tries"),
+    [
+        pytest.param(BerkeleyGame(), None, None, id="berkeley-any"),
+        pytest.param(BerkeleyGame(any_rule=False), None, None, id="berkeley"),
+        pytest.param(CincinnatiGame(), True, None, id="cincinnati"),
+        pytest.param(Wild16Game(), None, 1, id="wild16"),
+    ],
+)
+def test_rules_comparison_promotion_capture_counts_as_one_pawn_capture(
+    game,
+    expected_has_pawn_capture,
+    expected_pawn_tries,
+):
+    game = _build_promotion_capture_game(game)
+    promotion_captures = _promotion_capture_moves()
+
+    assert promotion_captures <= set(game.possible_to_ask)
+    assert game._count_legal_pawn_captures() == 1
+    assert game._has_any_pawn_captures() is True
+    assert game.current_turn_has_pawn_capture is expected_has_pawn_capture
+    assert game.current_turn_pawn_tries == expected_pawn_tries
 
 
 @pytest.mark.rules
