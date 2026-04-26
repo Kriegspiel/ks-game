@@ -1,8 +1,10 @@
 # kriegspiel
 
-[![PyPI version](https://badge.fury.io/py/kriegspiel.svg)](https://pypi.org/project/kriegspiel/)
+[![PyPI version](https://img.shields.io/pypi/v/kriegspiel.svg?label=PyPI)](https://pypi.org/project/kriegspiel/)
 
 Python game engine for hidden-information Kriegspiel referee rules.
+
+You can try the rules in a live game at [kriegspiel.org](https://kriegspiel.org/).
 
 Current scope:
 - Berkeley Kriegspiel
@@ -68,4 +70,5 @@ print(wild16.current_turn_pawn_tries)
 ## Links
 
 - PyPI: [kriegspiel](https://pypi.org/project/kriegspiel/)
+- Live site: [kriegspiel.org](https://kriegspiel.org/)
 - Issues: [github.com/Kriegspiel/ks-game/issues](https://github.com/Kriegspiel/ks-game/issues)
