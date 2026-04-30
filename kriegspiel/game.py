@@ -27,9 +27,10 @@ class KriegspielGame(object):
     Shared hidden-board Kriegspiel referee engine.
 
     Ruleset-specific behavior such as Berkeley `ASK_ANY`, Cincinnati binary
-    pawn-capture announcements, or Wild 16 pawn-try counts is delegated to a
-    policy layer. Variant-named wrappers like `BerkeleyGame`, `CincinnatiGame`,
-    and `Wild16Game` build on this class.
+    pawn-capture announcements, RAND pawn-try source squares, or Wild 16
+    pawn-try counts is delegated to a policy layer. Variant-named wrappers like
+    `BerkeleyGame`, `CincinnatiGame`, `RandGame`, and `Wild16Game` build on this
+    class.
 
     Communication with this class must be in the form of questions —
     KriegspielMove(s) with QuestionAnnouncement(s).
@@ -46,7 +47,8 @@ class KriegspielGame(object):
             any_rule: Legacy compatibility flag for Berkeley+Any. When omitted,
                      Berkeley+Any remains the default.
             ruleset: Explicit ruleset identifier. Supported values are
-                     `berkeley`, `berkeley_any`, `cincinnati`, and `wild16`.
+                     `berkeley`, `berkeley_any`, `cincinnati`, `rand`, and
+                     `wild16`.
         """
         super().__init__()
         self._ruleset = resolve_ruleset_policy(ruleset=ruleset, any_rule=any_rule)
@@ -112,15 +114,22 @@ class KriegspielGame(object):
             if self._is_legal_move(move.chess_move):
                 # Move is legal in normal chess
                 # Perform normal move
-                captured_square, captured_piece_announcement = self._make_move(move.chess_move)
+                captured_square, captured_piece_announcement, promotion_announced = self._make_move(
+                    move.chess_move
+                )
                 special_case = self._check_special_cases()
                 next_turn_pawn_tries = self._ruleset.next_turn_pawn_tries(self)
                 next_turn_has_pawn_capture = self._ruleset.next_turn_has_pawn_capture(self)
+                next_turn_pawn_try_squares = self._ruleset.next_turn_pawn_try_squares(self)
                 answer_kwargs = {"special_announcement": special_case}
+                if promotion_announced:
+                    answer_kwargs["promotion_announced"] = True
                 if next_turn_pawn_tries is not None:
                     answer_kwargs["next_turn_pawn_tries"] = next_turn_pawn_tries
                 if next_turn_has_pawn_capture is not None:
                     answer_kwargs["next_turn_has_pawn_capture"] = next_turn_has_pawn_capture
+                if next_turn_pawn_try_squares is not None:
+                    answer_kwargs["next_turn_pawn_try_squares"] = next_turn_pawn_try_squares
                 if captured_square is not None:
                     # If it was capture
                     answer_kwargs["capture_at_square"] = captured_square
@@ -248,6 +257,12 @@ class KriegspielGame(object):
         if self.is_game_over():
             self._game_over = True
             if self._board.is_stalemate():
+                if self._ruleset.stalemate_loses:
+                    return (
+                        SCA.STALEMATE_BLACK_WINS
+                        if self._board.turn == chess.WHITE
+                        else SCA.STALEMATE_WHITE_WINS
+                    )
                 return SCA.DRAW_STALEMATE
             if self._board.is_insufficient_material():
                 return SCA.DRAW_INSUFFICIENT
@@ -307,12 +322,13 @@ class KriegspielGame(object):
         self._must_use_pawns = False
         captured_square = None
         captured_piece_announcement = None
+        promotion_announced = bool(move.promotion and self._ruleset.announce_promotion)
         if self._board.is_capture(move):
             captured_square = self._get_captured_square(move)
             captured_piece = self._get_captured_piece(move)
             captured_piece_announcement = self._ruleset.captured_piece_announcement_for(captured_piece)
         self._board.push(move)
-        return captured_square, captured_piece_announcement
+        return captured_square, captured_piece_announcement, promotion_announced
 
     def _legal_pawn_capture_moves(self):
         """Return legal pawn captures for the active player in the true position."""
@@ -322,6 +338,10 @@ class KriegspielGame(object):
             for move in self._board.legal_moves
             if move.from_square in pawn_squares and self._board.is_capture(move)
         ]
+
+    def _legal_pawn_capture_source_squares(self):
+        """Return distinct source squares of legal pawn captures for the active player."""
+        return tuple(sorted({move.from_square for move in self._legal_pawn_capture_moves()}))
 
     def _count_legal_pawn_captures(self):
         """Count distinct legal pawn-capture attempts in the true position."""
@@ -437,9 +457,8 @@ class KriegspielGame(object):
         # which contains info about previous moves.
         possibilities = {KSMove(QA.COMMON, chess_move) for chess_move in players_board.legal_moves}
         self._ruleset.add_special_questions(possibilities)
-        # Second add possible pawn captures
-        if self._ruleset.include_pawn_capture_attempts(self):
-            possibilities.update(self._generate_possible_pawn_captures())
+        # Second add ruleset-approved hidden pawn-capture tries.
+        possibilities.update(self._ruleset.pawn_capture_attempts_for_prompt(self))
         self._set_possible_to_ask(possibilities)
 
     @property
@@ -495,6 +514,16 @@ class KriegspielGame(object):
         """
         return self._ruleset.next_turn_has_pawn_capture(self)
 
+    @property
+    def current_turn_pawn_try_squares(self):
+        """
+        Get RAND-style pawn-capture source squares for the player to move.
+
+        Returns:
+            tuple[int] or None: Source squares when the active ruleset announces them.
+        """
+        return self._ruleset.next_turn_pawn_try_squares(self)
+
     @staticmethod
     def _capture_counts_from_completed_moves(moves_own):
         captures = 0
@@ -513,11 +542,11 @@ class KriegspielGame(object):
         """
         Return material information that is public under the active ruleset.
 
-        Total captures are public in all supported rulesets. Cincinnati and
-        Wild 16 additionally announce whether the captured man was a pawn, so
-        pawn-capture counts are exposed there. The summary is derived from
-        completed capture answers instead of true-board pawn counts, because
-        promotion is intentionally silent in those rulesets.
+        Total captures are public in all supported rulesets. Cincinnati, RAND,
+        and Wild 16 additionally announce whether the captured man was a pawn,
+        so pawn-capture counts are exposed there. The summary is derived from
+        completed capture answers instead of true-board pawn counts so promotion
+        remains tied to what the referee publicly announced.
         """
         white_captures, white_pawn_captures = self._capture_counts_from_completed_moves(
             self._whites_scoresheet.moves_own

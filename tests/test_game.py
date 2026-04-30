@@ -16,6 +16,7 @@ from kriegspiel import MainAnnouncement as MA
 from kriegspiel import MaterialSideSummary
 from kriegspiel import PublicMaterialSummary
 from kriegspiel import QuestionAnnouncement as QA
+from kriegspiel import RandGame
 from kriegspiel import Wild16Game
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
@@ -149,6 +150,16 @@ def test_public_material_summary_hides_pawn_capture_counts_for_berkeley_family(g
             ),
             id="wild16",
         ),
+        pytest.param(
+            RandGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PAWN,
+                next_turn_pawn_try_squares=tuple(),
+            ),
+            id="rand",
+        ),
     ],
 )
 def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(game, expected_answer):
@@ -190,6 +201,16 @@ def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(
             ),
             id="wild16",
         ),
+        pytest.param(
+            RandGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.A5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_pawn_try_squares=tuple(),
+            ),
+            id="rand",
+        ),
     ],
 )
 def test_public_material_summary_keeps_non_pawn_captures_out_of_pawn_count(game, expected_answer):
@@ -229,10 +250,34 @@ def test_public_material_summary_does_not_treat_silent_promotion_as_a_pawn_captu
     )
 
 
+def test_public_material_summary_handles_rand_announced_promotion_without_pawn_capture():
+    game = RandGame()
+    game._board.clear()
+    game._board.set_piece_at(chess.F3, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.C1, chess.Piece(chess.BISHOP, chess.WHITE))
+    game._board.set_piece_at(chess.D2, chess.Piece(chess.PAWN, chess.BLACK))
+    game._board.turn = chess.BLACK
+    game._generate_possible_to_ask_list()
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=chess.QUEEN))) == KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.C1,
+        captured_piece_announcement=CPA.PIECE,
+        promotion_announced=True,
+        next_turn_pawn_try_squares=tuple(),
+    )
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=15, pawns_captured=0),
+        black=MaterialSideSummary(pieces_remaining=16, pawns_captured=0),
+    )
+
+
 def test_package_root_exports_variant_entrypoints():
     assert KriegspielGame.__name__ == "KriegspielGame"
     assert BerkeleyGame.__name__ == "BerkeleyGame"
     assert CincinnatiGame.__name__ == "CincinnatiGame"
+    assert RandGame.__name__ == "RandGame"
     assert Wild16Game.__name__ == "Wild16Game"
     assert MaterialSideSummary.__name__ == "MaterialSideSummary"
     assert PublicMaterialSummary.__name__ == "PublicMaterialSummary"

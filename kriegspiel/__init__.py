@@ -4,7 +4,7 @@ __author__ = "Alexander Filatov"
 
 __email__ = "alexander@kriegspiel.org"
 
-__version__ = "1.4.4"
+__version__ = "1.5.0"
 
 from kriegspiel.berkeley import BerkeleyGame
 from kriegspiel.cincinnati import CincinnatiGame
@@ -15,6 +15,7 @@ from kriegspiel.move import KriegspielMove
 from kriegspiel.move import MainAnnouncement
 from kriegspiel.move import QuestionAnnouncement
 from kriegspiel.move import SpecialCaseAnnouncement
+from kriegspiel.rand import RandGame
 from kriegspiel.snapshot import BerkeleyGameSnapshot
 from kriegspiel.snapshot import KriegspielGameSnapshot
 from kriegspiel.snapshot import MaterialSideSummary
@@ -35,6 +36,7 @@ __all__ = [
     "MaterialSideSummary",
     "PublicMaterialSummary",
     "QuestionAnnouncement",
+    "RandGame",
     "ScoresheetSnapshot",
     "SpecialCaseAnnouncement",
     "Wild16Game",

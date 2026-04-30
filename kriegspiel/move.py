@@ -203,8 +203,8 @@ MOVE_DONE = [MainAnnouncement.REGULAR_MOVE, MainAnnouncement.CAPTURE_DONE]
 class SpecialCaseAnnouncement(enum.Enum):
     """
     If the move set the game in one of the special conditions,
-    then Special Case Announcement is used. There are five of them
-    for game end cases — as DRAW or CHECKMATE. Also, six of then for
+    then Special Case Announcement is used. There are seven of them
+    for game end cases — as DRAW, CHECKMATE, or RAND stalemate. Also, six of them for
     CHECK case. And one of them is technical — NONE.
     """
 
@@ -216,6 +216,8 @@ class SpecialCaseAnnouncement(enum.Enum):
 
     CHECKMATE_WHITE_WINS = 4
     CHECKMATE_BLACK_WINS = 5
+    STALEMATE_WHITE_WINS = 12
+    STALEMATE_BLACK_WINS = 13
 
     CHECK_RANK = 6
     CHECK_FILE = 7
@@ -266,6 +268,8 @@ class KriegspielAnswer(object):
                 captured_piece_announcement (CapturedPieceAnnouncement): Optional public
                                     capture detail for variants that distinguish pawn
                                     captures from other piece captures.
+                promotion_announced (bool): Optional RAND-style public statement that
+                                    a pawn promoted, without exposing piece type or square.
                 special_announcement: Optional special game state from SpecialCaseAnnouncement
                                     enum. Can be a single value or tuple for double check.
                                     For CHECK_DOUBLE, provide (CHECK_DOUBLE, [check1, check2]).
@@ -273,6 +277,8 @@ class KriegspielAnswer(object):
                                     captures available for the next player to move.
                 next_turn_has_pawn_capture (bool): Optional Cincinnati-style binary
                                     pawn-capture announcement for the next player to move.
+                next_turn_pawn_try_squares (tuple[int]): Optional RAND-style source
+                                    squares of pawns that have legal capture tries.
         
         Raises:
             TypeError: If main_announcement is not a MainAnnouncement enum value,
@@ -295,6 +301,8 @@ class KriegspielAnswer(object):
         self._check_2 = None
         self._next_turn_pawn_tries = None
         self._next_turn_has_pawn_capture = None
+        self._next_turn_pawn_try_squares = None
+        self._promotion_announced = False
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             # Validation, that when capture is done, then valid square should
@@ -354,8 +362,36 @@ class KriegspielAnswer(object):
                 raise TypeError("next_turn_has_pawn_capture must be a boolean")
             self._next_turn_has_pawn_capture = next_turn_has_pawn_capture
 
-        if self._next_turn_pawn_tries is not None and self._next_turn_has_pawn_capture is not None:
-            raise ValueError("Use either next_turn_pawn_tries or next_turn_has_pawn_capture, not both")
+        if "next_turn_pawn_try_squares" in kwargs:
+            try:
+                pawn_try_squares = tuple(kwargs["next_turn_pawn_try_squares"])
+            except TypeError as exc:
+                raise TypeError("next_turn_pawn_try_squares must be an iterable of square integers") from exc
+            if not all(isinstance(square, int) for square in pawn_try_squares):
+                raise TypeError("next_turn_pawn_try_squares must contain only integers")
+            invalid_squares = [square for square in pawn_try_squares if not (0 <= square <= 63)]
+            if invalid_squares:
+                raise ValueError(f"Invalid pawn try square: {invalid_squares[0]}. Must be 0-63.")
+            self._next_turn_pawn_try_squares = tuple(sorted(set(pawn_try_squares)))
+
+        if "promotion_announced" in kwargs:
+            promotion_announced = kwargs["promotion_announced"]
+            if not isinstance(promotion_announced, bool):
+                raise TypeError("promotion_announced must be a boolean")
+            self._promotion_announced = promotion_announced
+
+        pawn_capture_metadata_count = sum(
+            value is not None
+            for value in (
+                self._next_turn_pawn_tries,
+                self._next_turn_has_pawn_capture,
+                self._next_turn_pawn_try_squares,
+            )
+        )
+        if pawn_capture_metadata_count > 1:
+            raise ValueError(
+                "Use only one next-turn pawn-capture announcement field"
+            )
 
         if self._main_announcement in MOVE_DONE:
             self._move_done = True
@@ -434,6 +470,26 @@ class KriegspielAnswer(object):
         return self._next_turn_has_pawn_capture
 
     @property
+    def next_turn_pawn_try_squares(self):
+        """
+        Get the next player's RAND-style pawn-capture source squares.
+
+        Returns:
+            tuple[int] or None: Source squares of pawns with legal capture tries.
+        """
+        return self._next_turn_pawn_try_squares
+
+    @property
+    def promotion_announced(self):
+        """
+        Get whether the answer publicly announces that a pawn promoted.
+
+        Returns:
+            bool: True when the ruleset announces the fact of promotion.
+        """
+        return self._promotion_announced
+
+    @property
     def check_1(self):
         """
         Get the first check type in a double check situation.
@@ -475,6 +531,11 @@ class KriegspielAnswer(object):
         ]
         if self._next_turn_has_pawn_capture is not None:
             main_data.append(f"next_turn_has_pawn_capture={self._next_turn_has_pawn_capture}")
+        if self._next_turn_pawn_try_squares is not None:
+            square_names = tuple(chess.SQUARE_NAMES[square] for square in self._next_turn_pawn_try_squares)
+            main_data.append(f"next_turn_pawn_try_squares={square_names}")
+        if self._promotion_announced:
+            main_data.append("promotion_announced=True")
 
         if self._check_1 is not None or self._check_2 is not None:
             extra_data = f"check_1={self._check_1}, check_2={self._check_2}"
@@ -490,6 +551,8 @@ class KriegspielAnswer(object):
             self._special_announcement,
             self._next_turn_pawn_tries,
             self._next_turn_has_pawn_capture,
+            self._next_turn_pawn_try_squares,
+            self._promotion_announced,
             self._check_1,
             self._check_2,
         )
@@ -502,6 +565,8 @@ class KriegspielAnswer(object):
             self._special_announcement.value,
             self._next_turn_pawn_tries if self._next_turn_pawn_tries is not None else -1,
             -1 if self._next_turn_has_pawn_capture is None else int(self._next_turn_has_pawn_capture),
+            self._next_turn_pawn_try_squares or (),
+            int(self._promotion_announced),
             self._check_1.value if self._check_1 is not None else -1,
             self._check_2.value if self._check_2 is not None else -1,
         )
@@ -519,7 +584,7 @@ class KriegspielAnswer(object):
         """
         Check equality with another KriegspielAnswer.
         
-        Two answers are equal if their string representations match.
+        Two answers are equal if their structured referee payloads match.
         
         Args:
             other: Object to compare with.

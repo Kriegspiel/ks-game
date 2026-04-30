@@ -1,5 +1,12 @@
 # Release Notes
 
+## Kriegspiel v. 1.5.0
+
+- **RAND Support**: added first-class `rand` ruleset handling plus a dedicated `kriegspiel.rand.RandGame` convenience entrypoint.
+- **RAND Announcements**: added public rebuffs, typed pawn-vs-piece capture announcements, promotion notices, RAND pawn-try source-square announcements, and the RAND ladder stalemate rule.
+- **Serialization**: schema `7` now preserves RAND promotion and pawn-try-square metadata while still reading schemas `3`, `4`, `5`, and `6`.
+- **Testing**: added focused RAND engine, serialization, and rules-comparison coverage for pawn tries, en passant, promotion, public rebuffs, and stalemate.
+
 ## Kriegspiel v. 1.4.4
 
 - **Public Material Summary**: added an engine-owned material summary derived from completed public capture announcements, with ruleset-specific pawn-capture counts for Cincinnati and Wild 16.

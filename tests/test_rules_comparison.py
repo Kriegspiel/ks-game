@@ -11,6 +11,7 @@ from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import QuestionAnnouncement as QA
+from kriegspiel.rand import RandGame
 from kriegspiel.wild16 import Wild16Game
 
 
@@ -58,15 +59,17 @@ def _promotion_capture_moves():
 
 
 @pytest.mark.rules
-def test_rules_comparison_position_announces_binary_vs_counted_pawn_captures():
+def test_rules_comparison_position_announces_ruleset_specific_pawn_capture_metadata():
     berkeley_any = _build_rules_comparison_game(BerkeleyGame())
     berkeley = _build_rules_comparison_game(BerkeleyGame(any_rule=False))
     cincinnati = _build_rules_comparison_game(CincinnatiGame())
+    rand = _build_rules_comparison_game(RandGame())
     wild16 = _build_rules_comparison_game(Wild16Game())
 
     assert KSMove(QA.ASK_ANY) in berkeley_any.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in berkeley.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in cincinnati.possible_to_ask
+    assert KSMove(QA.ASK_ANY) not in rand.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in wild16.possible_to_ask
 
     assert berkeley_any.current_turn_has_pawn_capture is None
@@ -75,6 +78,9 @@ def test_rules_comparison_position_announces_binary_vs_counted_pawn_captures():
     assert berkeley.current_turn_pawn_tries is None
     assert cincinnati.current_turn_has_pawn_capture is True
     assert cincinnati.current_turn_pawn_tries is None
+    assert rand.current_turn_has_pawn_capture is None
+    assert rand.current_turn_pawn_tries is None
+    assert rand.current_turn_pawn_try_squares == (chess.E4,)
     assert wild16.current_turn_has_pawn_capture is None
     assert wild16.current_turn_pawn_tries == 2
 
@@ -86,6 +92,7 @@ def test_rules_comparison_position_announces_binary_vs_counted_pawn_captures():
         pytest.param(BerkeleyGame(), None, None, id="berkeley-any"),
         pytest.param(BerkeleyGame(any_rule=False), None, None, id="berkeley"),
         pytest.param(CincinnatiGame(), True, None, id="cincinnati"),
+        pytest.param(RandGame(), None, None, id="rand"),
         pytest.param(Wild16Game(), None, 1, id="wild16"),
     ],
 )
@@ -102,6 +109,8 @@ def test_rules_comparison_promotion_capture_counts_as_one_pawn_capture(
     assert game._has_any_pawn_captures() is True
     assert game.current_turn_has_pawn_capture is expected_has_pawn_capture
     assert game.current_turn_pawn_tries == expected_pawn_tries
+    if isinstance(game, RandGame):
+        assert game.current_turn_pawn_try_squares == (chess.D2,)
 
 
 @pytest.mark.rules
@@ -127,6 +136,16 @@ def test_rules_comparison_promotion_capture_counts_as_one_pawn_capture(
                 next_turn_has_pawn_capture=False,
             ),
             id="cincinnati",
+        ),
+        pytest.param(
+            RandGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.A5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_pawn_try_squares=tuple(),
+            ),
+            id="rand",
         ),
         pytest.param(
             Wild16Game(),
@@ -194,6 +213,16 @@ def test_rules_comparison_berkeley_family_can_try_pawn_captures_without_announce
                 next_turn_pawn_tries=0,
             ),
             id="wild16",
+        ),
+        pytest.param(
+            RandGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PIECE,
+                next_turn_pawn_try_squares=tuple(),
+            ),
+            id="rand",
         ),
     ],
 )

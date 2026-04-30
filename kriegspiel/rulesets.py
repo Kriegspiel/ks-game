@@ -16,6 +16,7 @@ from kriegspiel.move import QuestionAnnouncement as QA
 RULESET_BERKELEY = "berkeley"
 RULESET_BERKELEY_ANY = "berkeley_any"
 RULESET_CINCINNATI = "cincinnati"
+RULESET_RAND = "rand"
 RULESET_WILD16 = "wild16"
 
 
@@ -35,20 +36,31 @@ class BerkeleyRulesetPolicy:
     discard_illegal_attempts: bool
     public_illegal_attempts: bool
     typed_capture_announcements: bool
+    announce_promotion: bool
     announce_next_turn_pawn_tries: bool
     announce_next_turn_has_pawn_capture: bool
+    announce_next_turn_pawn_try_squares: bool
+    stalemate_loses: bool
 
     def add_special_questions(self, possibilities: set[KSMove]) -> None:
         if self.allow_ask_any:
             possibilities.add(KSMove(QA.ASK_ANY))
 
-    def include_pawn_capture_attempts(self, game) -> bool:
-        """Return whether hidden pawn-capture tries belong in this prompt."""
+    def pawn_capture_attempts_for_prompt(self, game) -> set[KSMove]:
+        """Return hidden pawn-capture tries that belong in this prompt."""
+        pawn_captures = set(game._generate_possible_pawn_captures())
         if self.announce_next_turn_has_pawn_capture:
-            return game._has_any_pawn_captures()
+            return pawn_captures if game._has_any_pawn_captures() else set()
         if self.announce_next_turn_pawn_tries:
-            return game._count_legal_pawn_captures() > 0
-        return True
+            return pawn_captures if game._count_legal_pawn_captures() > 0 else set()
+        if self.announce_next_turn_pawn_try_squares:
+            legal_sources = set(game._legal_pawn_capture_source_squares())
+            return {
+                move
+                for move in pawn_captures
+                if move.chess_move is not None and move.chess_move.from_square in legal_sources
+            }
+        return pawn_captures
 
     def classify_impossible_common_attempt(self) -> MA:
         return self.invalid_common_attempt_result
@@ -104,6 +116,11 @@ class BerkeleyRulesetPolicy:
             return None
         return game._has_any_pawn_captures()
 
+    def next_turn_pawn_try_squares(self, game) -> tuple[int, ...] | None:
+        if not self.announce_next_turn_pawn_try_squares or game.game_over:
+            return None
+        return game._legal_pawn_capture_source_squares()
+
 
 def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None = None) -> BerkeleyRulesetPolicy:
     """Resolve legacy `any_rule` calls into an explicit ruleset policy."""
@@ -125,8 +142,11 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             discard_illegal_attempts=True,
             public_illegal_attempts=True,
             typed_capture_announcements=False,
+            announce_promotion=False,
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=False,
+            announce_next_turn_pawn_try_squares=False,
+            stalemate_loses=False,
         )
     if ruleset == RULESET_BERKELEY:
         return BerkeleyRulesetPolicy(
@@ -136,8 +156,11 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             discard_illegal_attempts=True,
             public_illegal_attempts=True,
             typed_capture_announcements=False,
+            announce_promotion=False,
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=False,
+            announce_next_turn_pawn_try_squares=False,
+            stalemate_loses=False,
         )
     if ruleset == RULESET_CINCINNATI:
         return BerkeleyRulesetPolicy(
@@ -147,8 +170,25 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             discard_illegal_attempts=True,
             public_illegal_attempts=True,
             typed_capture_announcements=True,
+            announce_promotion=False,
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=True,
+            announce_next_turn_pawn_try_squares=False,
+            stalemate_loses=False,
+        )
+    if ruleset == RULESET_RAND:
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=False,
+            invalid_common_attempt_result=MA.NONSENSE,
+            discard_illegal_attempts=True,
+            public_illegal_attempts=True,
+            typed_capture_announcements=True,
+            announce_promotion=True,
+            announce_next_turn_pawn_tries=False,
+            announce_next_turn_has_pawn_capture=False,
+            announce_next_turn_pawn_try_squares=True,
+            stalemate_loses=True,
         )
     if ruleset == RULESET_WILD16:
         return BerkeleyRulesetPolicy(
@@ -158,7 +198,10 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             discard_illegal_attempts=True,
             public_illegal_attempts=False,
             typed_capture_announcements=True,
+            announce_promotion=False,
             announce_next_turn_pawn_tries=True,
             announce_next_turn_has_pawn_capture=False,
+            announce_next_turn_pawn_try_squares=False,
+            stalemate_loses=False,
         )
     raise ValueError(f"Unsupported ruleset: {ruleset!r}")
