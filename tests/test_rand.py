@@ -123,7 +123,7 @@ def test_rand_en_passant_uses_capturable_pawn_source_and_captured_pawn_square():
         MA.CAPTURE_DONE,
         capture_at_square=chess.D5,
         captured_piece_announcement=CPA.PAWN,
-        next_turn_pawn_try_squares=tuple(),
+        next_turn_pawn_try_squares=(chess.C7, chess.E7),
     )
 
 

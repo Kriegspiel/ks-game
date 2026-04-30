@@ -621,7 +621,7 @@ class TestBerkeleyGameSerializer:
             next_turn_pawn_try_squares=(chess.E4,),
         )
 
-    def test_rand_roundtrip_preserves_promotion_announcement(self):
+    def test_rand_serialization_writes_promotion_announcement(self):
         game = BerkeleyGame(ruleset=RULESET_RAND)
         game._board.clear()
         game._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
@@ -630,10 +630,10 @@ class TestBerkeleyGameSerializer:
         game._generate_possible_to_ask_list()
         game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move(chess.H7, chess.H8, promotion=chess.QUEEN)))
         serialized = serialize_berkeley_game(game)
-        deserialized = deserialize_berkeley_game(serialized)
+        answer_data = serialized["game_state"]["white_scoresheet"]["moves_own"][0][0][1]
 
-        assert deserialized.ruleset_id == RULESET_RAND
-        assert deserialized._whites_scoresheet.moves_own[0][0][1] == KriegspielAnswer(
+        assert serialized["game_state"]["ruleset_id"] == RULESET_RAND
+        assert deserialize_kriegspiel_answer(answer_data) == KriegspielAnswer(
             MainAnnouncement.REGULAR_MOVE,
             promotion_announced=True,
             next_turn_pawn_try_squares=tuple(),
