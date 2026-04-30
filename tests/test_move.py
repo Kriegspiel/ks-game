@@ -217,6 +217,16 @@ def test_capture_answer_can_include_public_capture_kind():
     assert answer.captured_piece_announcement == CPA.PAWN
 
 
+def test_capture_answer_can_include_exact_public_capture_identity():
+    answer = KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.E4,
+        captured_piece_announcement=CPA.QUEEN,
+    )
+
+    assert answer.captured_piece_announcement == CPA.QUEEN
+
+
 def test_capture_answer_rejects_invalid_public_capture_kind():
     with pytest.raises(TypeError, match="captured_piece_announcement must be a CapturedPieceAnnouncement"):
         KSAnswer(
@@ -229,6 +239,23 @@ def test_capture_answer_rejects_invalid_public_capture_kind():
 def test_non_capture_answer_rejects_public_capture_kind():
     with pytest.raises(TypeError, match="captured_piece_announcement is only valid for CAPTURE_DONE"):
         KSAnswer(MA.REGULAR_MOVE, captured_piece_announcement=CPA.PAWN)
+
+
+def test_regular_move_answer_can_include_public_drop_identity():
+    answer = KSAnswer(MA.REGULAR_MOVE, dropped_piece_announcement=CPA.KNIGHT)
+
+    assert answer.dropped_piece_announcement == CPA.KNIGHT
+
+
+def test_drop_identity_rejects_generic_piece_and_invalid_context():
+    with pytest.raises(ValueError, match="must be an exact piece type"):
+        KSAnswer(MA.REGULAR_MOVE, dropped_piece_announcement=CPA.PIECE)
+
+    with pytest.raises(TypeError, match="dropped_piece_announcement must be a CapturedPieceAnnouncement"):
+        KSAnswer(MA.REGULAR_MOVE, dropped_piece_announcement="knight")
+
+    with pytest.raises(TypeError, match="dropped_piece_announcement is only valid for REGULAR_MOVE"):
+        KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.E4, dropped_piece_announcement=CPA.PAWN)
 
 
 def test_next_turn_pawn_tries_validation():
@@ -449,6 +476,16 @@ def test_ksanswer_str_with_rand_payload():
         "capture_at=None, captured_piece=None, special_case=SpecialCaseAnnouncement.NONE, "
         "next_turn_pawn_tries=None, next_turn_pawn_try_squares=('e4',), "
         "promotion_announced=True>"
+    )
+
+
+def test_ksanswer_str_with_drop_payload():
+    answer = KSAnswer(MA.REGULAR_MOVE, dropped_piece_announcement=CPA.KNIGHT)
+
+    assert str(answer) == (
+        "<KriegspielAnswer: MainAnnouncement.REGULAR_MOVE, "
+        "capture_at=None, captured_piece=None, special_case=SpecialCaseAnnouncement.NONE, "
+        "next_turn_pawn_tries=None, dropped_piece=CapturedPieceAnnouncement.KNIGHT>"
     )
 
 

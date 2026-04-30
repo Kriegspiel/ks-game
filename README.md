@@ -10,6 +10,7 @@ Current scope:
 - Berkeley Kriegspiel
 - Berkeley + Any
 - Cincinnati
+- CrazyKrieg
 - English
 - RAND
 - Wild 16
@@ -48,13 +49,16 @@ loaded = KriegspielGame.load_game("game.json")
 still use `BerkeleyGame` explicitly as a compatibility wrapper, or pick a ruleset
 with `ruleset=...`.
 
-Cincinnati, English, RAND, and Wild 16 also have their own convenience entrypoints:
+Cincinnati, CrazyKrieg, English, RAND, and Wild 16 also have their own convenience entrypoints:
 
 ```python
-from kriegspiel import CincinnatiGame, EnglishGame, RandGame, Wild16Game
+from kriegspiel import CincinnatiGame, CrazyKriegGame, EnglishGame, RandGame, Wild16Game
 
 cincinnati = CincinnatiGame()
 print(cincinnati.current_turn_has_pawn_capture)
+
+crazykrieg = CrazyKriegGame()
+print(crazykrieg.public_reserve_summary)
 
 english = EnglishGame()
 print(english.any_rule)
@@ -71,6 +75,7 @@ print(wild16.current_turn_pawn_tries)
 - `KriegspielGame`: the neutral public entrypoint for the shared hidden-board engine
 - `BerkeleyGame`: backward-compatible Berkeley-named wrapper over `KriegspielGame`
 - `CincinnatiGame`: Cincinnati convenience entrypoint with public `NONSENSE` and binary pawn-capture announcements
+- `CrazyKriegGame`: Crazyhouse Kriegspiel entrypoint with public reserves, hidden drops, and exact reserve-identity capture announcements
 - `EnglishGame`: English convenience entrypoint with public illegal attempts and one-try `ASK_ANY` handling
 - `RandGame`: RAND convenience entrypoint with public rebuffs, pawn-try source-square announcements, typed captures, and promotion notices
 - `Wild16Game`: Wild 16 convenience entrypoint over the shared hidden-board engine

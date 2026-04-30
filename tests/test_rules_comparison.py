@@ -6,6 +6,7 @@ import pytest
 
 from kriegspiel.berkeley import BerkeleyGame, chess
 from kriegspiel.cincinnati import CincinnatiGame
+from kriegspiel.crazykrieg import CrazyKriegGame
 from kriegspiel.english import EnglishGame
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
@@ -64,6 +65,7 @@ def test_rules_comparison_position_announces_ruleset_specific_pawn_capture_metad
     berkeley_any = _build_rules_comparison_game(BerkeleyGame())
     berkeley = _build_rules_comparison_game(BerkeleyGame(any_rule=False))
     cincinnati = _build_rules_comparison_game(CincinnatiGame())
+    crazykrieg = _build_rules_comparison_game(CrazyKriegGame())
     english = _build_rules_comparison_game(EnglishGame())
     rand = _build_rules_comparison_game(RandGame())
     wild16 = _build_rules_comparison_game(Wild16Game())
@@ -71,6 +73,7 @@ def test_rules_comparison_position_announces_ruleset_specific_pawn_capture_metad
     assert KSMove(QA.ASK_ANY) in berkeley_any.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in berkeley.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in cincinnati.possible_to_ask
+    assert KSMove(QA.ASK_ANY) in crazykrieg.possible_to_ask
     assert KSMove(QA.ASK_ANY) in english.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in rand.possible_to_ask
     assert KSMove(QA.ASK_ANY) not in wild16.possible_to_ask
@@ -81,6 +84,9 @@ def test_rules_comparison_position_announces_ruleset_specific_pawn_capture_metad
     assert berkeley.current_turn_pawn_tries is None
     assert cincinnati.current_turn_has_pawn_capture is True
     assert cincinnati.current_turn_pawn_tries is None
+    assert crazykrieg.current_turn_has_pawn_capture is None
+    assert crazykrieg.current_turn_pawn_tries is None
+    assert crazykrieg.current_turn_pawn_try_squares is None
     assert english.current_turn_has_pawn_capture is None
     assert english.current_turn_pawn_tries is None
     assert english.current_turn_pawn_try_squares is None
@@ -98,6 +104,7 @@ def test_rules_comparison_position_announces_ruleset_specific_pawn_capture_metad
         pytest.param(BerkeleyGame(), None, None, id="berkeley-any"),
         pytest.param(BerkeleyGame(any_rule=False), None, None, id="berkeley"),
         pytest.param(CincinnatiGame(), True, None, id="cincinnati"),
+        pytest.param(CrazyKriegGame(), None, None, id="crazykrieg"),
         pytest.param(EnglishGame(), None, None, id="english"),
         pytest.param(RandGame(), None, None, id="rand"),
         pytest.param(Wild16Game(), None, 1, id="wild16"),
@@ -138,6 +145,15 @@ def test_rules_comparison_promotion_capture_counts_as_one_pawn_capture(
             EnglishGame(),
             KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.A5),
             id="english",
+        ),
+        pytest.param(
+            CrazyKriegGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.A5,
+                captured_piece_announcement=CPA.KNIGHT,
+            ),
+            id="crazykrieg",
         ),
         pytest.param(
             CincinnatiGame(),
@@ -193,6 +209,7 @@ def test_rules_comparison_berkeley_any_has_any_forces_a_pawn_capture():
     [
         pytest.param(BerkeleyGame(), id="berkeley-any"),
         pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+        pytest.param(CrazyKriegGame(), id="crazykrieg"),
         pytest.param(EnglishGame(), id="english"),
     ],
 )

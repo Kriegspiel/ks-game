@@ -15,6 +15,8 @@ from kriegspiel.rulesets import resolve_ruleset_policy
 from kriegspiel.snapshot import KriegspielGameSnapshot
 from kriegspiel.snapshot import MaterialSideSummary
 from kriegspiel.snapshot import PublicMaterialSummary
+from kriegspiel.snapshot import PublicReserveSummary
+from kriegspiel.snapshot import ReserveSideSummary
 from kriegspiel.snapshot import move_stack_from_scoresheets
 from kriegspiel.serialization import save_game_to_json, load_game_from_json
 
@@ -26,11 +28,12 @@ class KriegspielGame(object):
     """
     Shared hidden-board Kriegspiel referee engine.
 
-    Ruleset-specific behavior such as Berkeley `ASK_ANY`, English one-try
-    `ASK_ANY`, Cincinnati binary pawn-capture announcements, RAND pawn-try
-    source squares, or Wild 16 pawn-try counts is delegated to a policy layer.
-    Variant-named wrappers like `BerkeleyGame`, `EnglishGame`, `CincinnatiGame`,
-    `RandGame`, and `Wild16Game` build on this class.
+    Ruleset-specific behavior such as Berkeley `ASK_ANY`, CrazyKrieg reserves,
+    English one-try `ASK_ANY`, Cincinnati binary pawn-capture announcements,
+    RAND pawn-try source squares, or Wild 16 pawn-try counts is delegated to a
+    policy layer. Variant-named wrappers like `BerkeleyGame`, `CrazyKriegGame`,
+    `EnglishGame`, `CincinnatiGame`, `RandGame`, and `Wild16Game` build on this
+    class.
 
     Communication with this class must be in the form of questions —
     KriegspielMove(s) with QuestionAnnouncement(s).
@@ -47,13 +50,13 @@ class KriegspielGame(object):
             any_rule: Legacy compatibility flag for Berkeley+Any. When omitted,
                      Berkeley+Any remains the default.
             ruleset: Explicit ruleset identifier. Supported values are
-                     `berkeley`, `berkeley_any`, `cincinnati`, `english`,
-                     `rand`, and `wild16`.
+                     `berkeley`, `berkeley_any`, `cincinnati`, `crazykrieg`,
+                     `english`, `rand`, and `wild16`.
         """
         super().__init__()
         self._ruleset = resolve_ruleset_policy(ruleset=ruleset, any_rule=any_rule)
         self._any_rule = self._ruleset.allow_ask_any
-        self._board = chess.Board()
+        self._board = self._ruleset.new_board()
         self._must_use_pawns = False
         self._game_over = False
         self._possible_to_ask = []
@@ -114,7 +117,12 @@ class KriegspielGame(object):
             if self._is_legal_move(move.chess_move):
                 # Move is legal in normal chess
                 # Perform normal move
-                captured_square, captured_piece_announcement, promotion_announced = self._make_move(
+                (
+                    captured_square,
+                    captured_piece_announcement,
+                    dropped_piece_announcement,
+                    promotion_announced,
+                ) = self._make_move(
                     move.chess_move
                 )
                 special_case = self._check_special_cases()
@@ -124,6 +132,8 @@ class KriegspielGame(object):
                 answer_kwargs = {"special_announcement": special_case}
                 if promotion_announced:
                     answer_kwargs["promotion_announced"] = True
+                if dropped_piece_announcement is not None:
+                    answer_kwargs["dropped_piece_announcement"] = dropped_piece_announcement
                 if next_turn_pawn_tries is not None:
                     answer_kwargs["next_turn_pawn_tries"] = next_turn_pawn_tries
                 if next_turn_has_pawn_capture is not None:
@@ -179,7 +189,7 @@ class KriegspielGame(object):
         # Or it is new condition.
         if (
             self._board.is_stalemate()
-            or self._board.is_insufficient_material()
+            or self._is_insufficient_material()
             or self._board.is_checkmate()
             or self._board.halfmove_clock == HALFMOVE_CLOCK_LIMIT
         ):
@@ -264,7 +274,7 @@ class KriegspielGame(object):
                         else SCA.STALEMATE_WHITE_WINS
                     )
                 return SCA.DRAW_STALEMATE
-            if self._board.is_insufficient_material():
+            if self._is_insufficient_material():
                 return SCA.DRAW_INSUFFICIENT
             if self._board.is_checkmate():
                 result = self._board.result()
@@ -314,6 +324,13 @@ class KriegspielGame(object):
         captured_square = self._get_captured_square(move)
         return self._board.piece_at(captured_square)
 
+    def _is_insufficient_material(self):
+        """Treat reserve material as sufficient mating material for drop variants."""
+        if hasattr(self._board, "pockets"):
+            if len(self._board.pockets[chess.WHITE]) or len(self._board.pockets[chess.BLACK]):
+                return False
+        return self._board.is_insufficient_material()
+
     def _make_move(self, move):
         """
         Make the move on the referee's board
@@ -322,13 +339,18 @@ class KriegspielGame(object):
         self._must_use_pawns = False
         captured_square = None
         captured_piece_announcement = None
+        dropped_piece_announcement = self._ruleset.dropped_piece_announcement_for(KSMove(QA.COMMON, move))
         promotion_announced = bool(move.promotion and self._ruleset.announce_promotion)
         if self._board.is_capture(move):
             captured_square = self._get_captured_square(move)
             captured_piece = self._get_captured_piece(move)
-            captured_piece_announcement = self._ruleset.captured_piece_announcement_for(captured_piece)
+            captured_piece_announcement = self._ruleset.captured_piece_announcement_for(
+                captured_piece,
+                board=self._board,
+                captured_square=captured_square,
+            )
         self._board.push(move)
-        return captured_square, captured_piece_announcement, promotion_announced
+        return captured_square, captured_piece_announcement, dropped_piece_announcement, promotion_announced
 
     def _legal_pawn_capture_moves(self):
         """Return legal pawn captures for the active player in the true position."""
@@ -567,6 +589,26 @@ class KriegspielGame(object):
             ),
         )
 
+    @staticmethod
+    def _reserve_summary_from_pocket(pocket):
+        return ReserveSideSummary(
+            pawns=pocket.count(chess.PAWN),
+            knights=pocket.count(chess.KNIGHT),
+            bishops=pocket.count(chess.BISHOP),
+            rooks=pocket.count(chess.ROOK),
+            queens=pocket.count(chess.QUEEN),
+        )
+
+    @property
+    def public_reserve_summary(self):
+        """Return public reserve/pocket material for drop variants."""
+        if not hasattr(self._board, "pockets"):
+            return PublicReserveSummary(white=ReserveSideSummary(), black=ReserveSideSummary())
+        return PublicReserveSummary(
+            white=self._reserve_summary_from_pocket(self._board.pockets[chess.WHITE]),
+            black=self._reserve_summary_from_pocket(self._board.pockets[chess.BLACK]),
+        )
+
     @property
     def must_use_pawns(self):
         """
@@ -633,12 +675,14 @@ class KriegspielGame(object):
         if not isinstance(snapshot, KriegspielGameSnapshot):
             raise TypeError("snapshot must be a KriegspielGameSnapshot")
 
+        ruleset = resolve_ruleset_policy(ruleset=snapshot.ruleset_id)
+
         try:
-            chess.Board(snapshot.board_fen)
+            ruleset.board_from_fen(snapshot.board_fen)
         except ValueError as exc:
             raise ValueError(f"Invalid board FEN: {snapshot.board_fen}") from exc
 
-        board = chess.Board()
+        board = ruleset.new_board()
         try:
             for move_uci in snapshot.move_stack:
                 board.push_uci(move_uci)
