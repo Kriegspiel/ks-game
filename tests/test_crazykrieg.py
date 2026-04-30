@@ -150,6 +150,7 @@ def test_crazykrieg_drop_can_give_check_without_revealing_square():
     game = CrazyKriegGame()
     _reset_board(game)
     game._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.A2, chess.Piece(chess.ROOK, chess.WHITE))
     game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
     game._board.pockets[chess.WHITE].add(chess.KNIGHT)
     game._generate_possible_to_ask_list()
