@@ -10,6 +10,7 @@ import pytest
 
 from kriegspiel import BerkeleyGame
 from kriegspiel import CincinnatiGame
+from kriegspiel import EnglishGame
 from kriegspiel import KriegspielGame
 from kriegspiel import KriegspielMove as KSMove
 from kriegspiel import MainAnnouncement as MA
@@ -114,9 +115,10 @@ def test_move_stack_from_scoresheets_handles_black_only_turns():
     [
         pytest.param(BerkeleyGame(), id="berkeley-any"),
         pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+        pytest.param(EnglishGame(), id="english"),
     ],
 )
-def test_public_material_summary_hides_pawn_capture_counts_for_berkeley_family(game):
+def test_public_material_summary_hides_pawn_capture_counts_for_untyped_rulesets(game):
     game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e2e4")))
     game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("d7d5")))
     game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e4d5")))
@@ -277,6 +279,7 @@ def test_package_root_exports_variant_entrypoints():
     assert KriegspielGame.__name__ == "KriegspielGame"
     assert BerkeleyGame.__name__ == "BerkeleyGame"
     assert CincinnatiGame.__name__ == "CincinnatiGame"
+    assert EnglishGame.__name__ == "EnglishGame"
     assert RandGame.__name__ == "RandGame"
     assert Wild16Game.__name__ == "Wild16Game"
     assert MaterialSideSummary.__name__ == "MaterialSideSummary"

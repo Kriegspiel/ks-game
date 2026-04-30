@@ -4,10 +4,11 @@ __author__ = "Alexander Filatov"
 
 __email__ = "alexander@kriegspiel.org"
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 from kriegspiel.berkeley import BerkeleyGame
 from kriegspiel.cincinnati import CincinnatiGame
+from kriegspiel.english import EnglishGame
 from kriegspiel.game import KriegspielGame
 from kriegspiel.move import CapturedPieceAnnouncement
 from kriegspiel.move import KriegspielAnswer
@@ -28,6 +29,7 @@ __all__ = [
     "BerkeleyGameSnapshot",
     "CincinnatiGame",
     "CapturedPieceAnnouncement",
+    "EnglishGame",
     "KriegspielAnswer",
     "KriegspielGame",
     "KriegspielGameSnapshot",

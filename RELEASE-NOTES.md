@@ -1,5 +1,12 @@
 # Release Notes
 
+## Kriegspiel v. 1.6.0
+
+- **English Support**: added first-class `english` ruleset handling plus a dedicated `kriegspiel.english.EnglishGame` convenience entrypoint.
+- **English Any? Rule**: supports the English “Any?” question, where a positive answer requires one pawn-capture try and then releases the player if that try is illegal.
+- **Referee Announcements**: English illegal attempts are public, captures announce the square without pawn-vs-piece identity, promotions remain silent, and stalemate remains a draw.
+- **Testing**: added focused English engine, serialization, and rules-comparison coverage while keeping branch coverage expectations intact.
+
 ## Kriegspiel v. 1.5.0
 
 - **RAND Support**: added first-class `rand` ruleset handling plus a dedicated `kriegspiel.rand.RandGame` convenience entrypoint.

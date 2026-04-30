@@ -26,11 +26,11 @@ class KriegspielGame(object):
     """
     Shared hidden-board Kriegspiel referee engine.
 
-    Ruleset-specific behavior such as Berkeley `ASK_ANY`, Cincinnati binary
-    pawn-capture announcements, RAND pawn-try source squares, or Wild 16
-    pawn-try counts is delegated to a policy layer. Variant-named wrappers like
-    `BerkeleyGame`, `CincinnatiGame`, `RandGame`, and `Wild16Game` build on this
-    class.
+    Ruleset-specific behavior such as Berkeley `ASK_ANY`, English one-try
+    `ASK_ANY`, Cincinnati binary pawn-capture announcements, RAND pawn-try
+    source squares, or Wild 16 pawn-try counts is delegated to a policy layer.
+    Variant-named wrappers like `BerkeleyGame`, `EnglishGame`, `CincinnatiGame`,
+    `RandGame`, and `Wild16Game` build on this class.
 
     Communication with this class must be in the form of questions —
     KriegspielMove(s) with QuestionAnnouncement(s).
@@ -47,8 +47,8 @@ class KriegspielGame(object):
             any_rule: Legacy compatibility flag for Berkeley+Any. When omitted,
                      Berkeley+Any remains the default.
             ruleset: Explicit ruleset identifier. Supported values are
-                     `berkeley`, `berkeley_any`, `cincinnati`, `rand`, and
-                     `wild16`.
+                     `berkeley`, `berkeley_any`, `cincinnati`, `english`,
+                     `rand`, and `wild16`.
         """
         super().__init__()
         self._ruleset = resolve_ruleset_policy(ruleset=ruleset, any_rule=any_rule)
@@ -109,7 +109,7 @@ class KriegspielGame(object):
         """
         if move.question_type == QA.COMMON:
             if move not in self._possible_to_ask_set:
-                return KSAnswer(self._ruleset.classify_impossible_common_attempt())
+                return KSAnswer(self._ruleset.classify_impossible_common_attempt(self))
             # Player asks about a common move
             if self._is_legal_move(move.chess_move):
                 # Move is legal in normal chess
