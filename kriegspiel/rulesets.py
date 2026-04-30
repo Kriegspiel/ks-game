@@ -16,6 +16,7 @@ from kriegspiel.move import QuestionAnnouncement as QA
 RULESET_BERKELEY = "berkeley"
 RULESET_BERKELEY_ANY = "berkeley_any"
 RULESET_CINCINNATI = "cincinnati"
+RULESET_ENGLISH = "english"
 RULESET_RAND = "rand"
 RULESET_WILD16 = "wild16"
 
@@ -27,7 +28,7 @@ class BerkeleyRulesetPolicy:
     The hidden-board move engine is shared, while this policy decides
     which referee-only questions exist and how those questions constrain
     the next prompt. This keeps the current Berkeley behavior intact while
-    making Cincinnati / Wild 16 style variants easier to add.
+    making ruleset variants easier to add without forking the engine.
     """
 
     identifier: str
@@ -40,6 +41,7 @@ class BerkeleyRulesetPolicy:
     announce_next_turn_pawn_tries: bool
     announce_next_turn_has_pawn_capture: bool
     announce_next_turn_pawn_try_squares: bool
+    release_ask_any_after_failed_pawn_try: bool
     stalemate_loses: bool
 
     def add_special_questions(self, possibilities: set[KSMove]) -> None:
@@ -62,7 +64,9 @@ class BerkeleyRulesetPolicy:
             }
         return pawn_captures
 
-    def classify_impossible_common_attempt(self) -> MA:
+    def classify_impossible_common_attempt(self, game=None) -> MA:
+        if game is not None and game.must_use_pawns:
+            return MA.IMPOSSIBLE_TO_ASK
         return self.invalid_common_attempt_result
 
     def handle_special_question(self, game, move: KSMove):
@@ -76,6 +80,10 @@ class BerkeleyRulesetPolicy:
         return KSAnswer(MA.NO_ANY)
 
     def apply_post_answer_constraints(self, game, answer: KSAnswer) -> None:
+        if self.release_ask_any_after_failed_pawn_try and game.must_use_pawns and answer.main_announcement == MA.ILLEGAL_MOVE:
+            game._must_use_pawns = False
+            game._generate_possible_to_ask_list()
+            return
         if not self.allow_ask_any:
             return
         if answer.main_announcement == MA.HAS_ANY:
@@ -128,7 +136,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
         allow_ask_any = True if any_rule is None else any_rule
         ruleset = RULESET_BERKELEY_ANY if allow_ask_any else RULESET_BERKELEY
     elif any_rule is not None:
-        expected_any_rule = ruleset == RULESET_BERKELEY_ANY
+        expected_any_rule = ruleset in {RULESET_BERKELEY_ANY, RULESET_ENGLISH}
         if expected_any_rule != any_rule:
             raise ValueError(
                 f"ruleset {ruleset!r} conflicts with any_rule={any_rule!r}"
@@ -146,6 +154,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=False,
             announce_next_turn_pawn_try_squares=False,
+            release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
         )
     if ruleset == RULESET_BERKELEY:
@@ -160,6 +169,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=False,
             announce_next_turn_pawn_try_squares=False,
+            release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
         )
     if ruleset == RULESET_CINCINNATI:
@@ -174,6 +184,22 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=True,
             announce_next_turn_pawn_try_squares=False,
+            release_ask_any_after_failed_pawn_try=False,
+            stalemate_loses=False,
+        )
+    if ruleset == RULESET_ENGLISH:
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=True,
+            invalid_common_attempt_result=MA.ILLEGAL_MOVE,
+            discard_illegal_attempts=True,
+            public_illegal_attempts=True,
+            typed_capture_announcements=False,
+            announce_promotion=False,
+            announce_next_turn_pawn_tries=False,
+            announce_next_turn_has_pawn_capture=False,
+            announce_next_turn_pawn_try_squares=False,
+            release_ask_any_after_failed_pawn_try=True,
             stalemate_loses=False,
         )
     if ruleset == RULESET_RAND:
@@ -188,6 +214,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_tries=False,
             announce_next_turn_has_pawn_capture=False,
             announce_next_turn_pawn_try_squares=True,
+            release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=True,
         )
     if ruleset == RULESET_WILD16:
@@ -202,6 +229,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_tries=True,
             announce_next_turn_has_pawn_capture=False,
             announce_next_turn_pawn_try_squares=False,
+            release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
         )
     raise ValueError(f"Unsupported ruleset: {ruleset!r}")

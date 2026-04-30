@@ -28,6 +28,7 @@ from kriegspiel.serialization import (
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 from kriegspiel.rulesets import RULESET_CINCINNATI
+from kriegspiel.rulesets import RULESET_ENGLISH
 from kriegspiel.rulesets import RULESET_RAND
 from kriegspiel.rulesets import RULESET_WILD16
 
@@ -500,6 +501,13 @@ class TestBerkeleyGameSerializer:
         assert result["game_state"]["ruleset_id"] == RULESET_CINCINNATI
         assert result["game_state"]["any_rule"] is False
 
+    def test_serialize_english_game(self):
+        game = BerkeleyGame(ruleset=RULESET_ENGLISH)
+        result = serialize_berkeley_game(game)
+
+        assert result["game_state"]["ruleset_id"] == RULESET_ENGLISH
+        assert result["game_state"]["any_rule"] is True
+
     def test_serialize_rand_game(self):
         game = BerkeleyGame(ruleset=RULESET_RAND)
         result = serialize_berkeley_game(game)
@@ -605,6 +613,16 @@ class TestBerkeleyGameSerializer:
             MainAnnouncement.REGULAR_MOVE,
             next_turn_has_pawn_capture=True,
         )
+
+    def test_english_roundtrip_preserves_any_state(self):
+        game = BerkeleyGame(ruleset=RULESET_ENGLISH)
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")))
+        serialized = serialize_berkeley_game(game)
+        deserialized = deserialize_berkeley_game(serialized)
+
+        assert deserialized.ruleset_id == RULESET_ENGLISH
+        assert deserialized.any_rule is True
+        assert KriegspielMove(QuestionAnnouncement.ASK_ANY) in deserialized.possible_to_ask
 
     def test_rand_roundtrip_preserves_public_rebuffs_and_pawn_try_squares(self):
         game = BerkeleyGame(ruleset=RULESET_RAND)

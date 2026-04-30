@@ -3,6 +3,7 @@
 """Focused policy tests for shared ruleset behavior."""
 
 import chess
+import pytest
 
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
@@ -12,6 +13,7 @@ from kriegspiel.move import QuestionAnnouncement as QA
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 from kriegspiel.rulesets import RULESET_CINCINNATI
+from kriegspiel.rulesets import RULESET_ENGLISH
 from kriegspiel.rulesets import RULESET_RAND
 from kriegspiel.rulesets import RULESET_WILD16
 from kriegspiel.rulesets import resolve_ruleset_policy
@@ -21,7 +23,13 @@ def test_resolve_ruleset_policy_accepts_matching_any_rule_flags():
     assert resolve_ruleset_policy(ruleset=RULESET_BERKELEY_ANY, any_rule=True).identifier == RULESET_BERKELEY_ANY
     assert resolve_ruleset_policy(ruleset=RULESET_BERKELEY, any_rule=False).identifier == RULESET_BERKELEY
     assert resolve_ruleset_policy(ruleset=RULESET_CINCINNATI, any_rule=False).identifier == RULESET_CINCINNATI
+    assert resolve_ruleset_policy(ruleset=RULESET_ENGLISH, any_rule=True).identifier == RULESET_ENGLISH
     assert resolve_ruleset_policy(ruleset=RULESET_RAND, any_rule=False).identifier == RULESET_RAND
+
+
+def test_resolve_ruleset_policy_rejects_conflicting_english_any_rule_flag():
+    with pytest.raises(ValueError, match="conflicts"):
+        resolve_ruleset_policy(ruleset=RULESET_ENGLISH, any_rule=False)
 
 
 def test_ruleset_policy_controls_opponent_visibility():
@@ -33,6 +41,13 @@ def test_ruleset_policy_controls_opponent_visibility():
     assert public_policy.should_record_opponent_answer(move, KSAnswer(MA.ILLEGAL_MOVE)) is True
     assert private_policy.should_record_opponent_answer(move, KSAnswer(MA.ILLEGAL_MOVE)) is False
     assert private_policy.should_record_opponent_answer(move, KSAnswer(MA.REGULAR_MOVE)) is True
+
+
+def test_ruleset_policy_rejects_non_pawn_moves_during_ask_any_obligation():
+    policy = resolve_ruleset_policy(ruleset=RULESET_ENGLISH)
+    fake_game = type("FakeGame", (), {"must_use_pawns": True})()
+
+    assert policy.classify_impossible_common_attempt(fake_game) == MA.IMPOSSIBLE_TO_ASK
 
 
 def test_ruleset_policy_announces_piece_captures_for_wild16():
