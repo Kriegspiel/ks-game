@@ -28,6 +28,7 @@ from kriegspiel.serialization import (
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 from kriegspiel.rulesets import RULESET_CINCINNATI
+from kriegspiel.rulesets import RULESET_RAND
 from kriegspiel.rulesets import RULESET_WILD16
 
 
@@ -100,6 +101,8 @@ class TestEnumSerializer:
             (SpecialCaseAnnouncement.NONE, deserialize_special_case_announcement),
             (SpecialCaseAnnouncement.CHECK_RANK, deserialize_special_case_announcement),
             (SpecialCaseAnnouncement.CHECKMATE_WHITE_WINS, deserialize_special_case_announcement),
+            (SpecialCaseAnnouncement.STALEMATE_WHITE_WINS, deserialize_special_case_announcement),
+            (SpecialCaseAnnouncement.STALEMATE_BLACK_WINS, deserialize_special_case_announcement),
         ]
         
         for enum_val, deserializer in enums_to_test:
@@ -331,6 +334,44 @@ class TestKriegspielAnswerSerializer:
             MainAnnouncement.REGULAR_MOVE,
             next_turn_has_pawn_capture=False,
         )
+
+    def test_serialize_rand_answer_fields(self):
+        answer = KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            promotion_announced=True,
+            next_turn_pawn_try_squares=[chess.E4, chess.C2, chess.E4],
+        )
+
+        assert serialize_kriegspiel_answer(answer) == {
+            "main_announcement": "REGULAR_MOVE",
+            "capture_at_square": None,
+            "captured_piece_announcement": None,
+            "special_announcement": "NONE",
+            "next_turn_pawn_tries": None,
+            "check_1": None,
+            "check_2": None,
+            "promotion_announced": True,
+            "next_turn_pawn_try_squares": [chess.C2, chess.E4],
+        }
+
+    def test_deserialize_rand_answer_fields(self):
+        data = {
+            "main_announcement": "REGULAR_MOVE",
+            "capture_at_square": None,
+            "captured_piece_announcement": None,
+            "special_announcement": "NONE",
+            "next_turn_pawn_tries": None,
+            "check_1": None,
+            "check_2": None,
+            "promotion_announced": True,
+            "next_turn_pawn_try_squares": [chess.E4, chess.C2],
+        }
+
+        assert deserialize_kriegspiel_answer(data) == KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            promotion_announced=True,
+            next_turn_pawn_try_squares=(chess.C2, chess.E4),
+        )
     
     def test_kriegspiel_answer_roundtrip(self):
         answers = [
@@ -347,6 +388,8 @@ class TestKriegspielAnswerSerializer:
             KriegspielAnswer(MainAnnouncement.HAS_ANY),
             KriegspielAnswer(MainAnnouncement.NO_ANY),
             KriegspielAnswer(MainAnnouncement.REGULAR_MOVE, next_turn_has_pawn_capture=True),
+            KriegspielAnswer(MainAnnouncement.REGULAR_MOVE, next_turn_pawn_try_squares=(chess.E4,)),
+            KriegspielAnswer(MainAnnouncement.REGULAR_MOVE, promotion_announced=True),
         ]
         
         for answer in answers:
@@ -456,6 +499,13 @@ class TestBerkeleyGameSerializer:
 
         assert result["game_state"]["ruleset_id"] == RULESET_CINCINNATI
         assert result["game_state"]["any_rule"] is False
+
+    def test_serialize_rand_game(self):
+        game = BerkeleyGame(ruleset=RULESET_RAND)
+        result = serialize_berkeley_game(game)
+
+        assert result["game_state"]["ruleset_id"] == RULESET_RAND
+        assert result["game_state"]["any_rule"] is False
     
     def test_serialize_game_with_moves(self):
         game = BerkeleyGame(any_rule=True)
@@ -554,6 +604,39 @@ class TestBerkeleyGameSerializer:
         assert deserialized._whites_scoresheet.moves_opponent[0][0][1] == KriegspielAnswer(
             MainAnnouncement.REGULAR_MOVE,
             next_turn_has_pawn_capture=True,
+        )
+
+    def test_rand_roundtrip_preserves_public_rebuffs_and_pawn_try_squares(self):
+        game = BerkeleyGame(ruleset=RULESET_RAND)
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e3e4")))
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("e2e4")))
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move.from_uci("d7d5")))
+        serialized = serialize_berkeley_game(game)
+        deserialized = deserialize_berkeley_game(serialized)
+
+        assert deserialized.ruleset_id == RULESET_RAND
+        assert deserialized._whites_scoresheet.moves_own[0][0][1] == KriegspielAnswer(MainAnnouncement.NONSENSE)
+        assert deserialized._whites_scoresheet.moves_opponent[0][0][1] == KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            next_turn_pawn_try_squares=(chess.E4,),
+        )
+
+    def test_rand_serialization_writes_promotion_announcement(self):
+        game = BerkeleyGame(ruleset=RULESET_RAND)
+        game._board.clear()
+        game._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
+        game._board.set_piece_at(chess.H7, chess.Piece(chess.PAWN, chess.WHITE))
+        game._board.set_piece_at(chess.A4, chess.Piece(chess.KING, chess.BLACK))
+        game._generate_possible_to_ask_list()
+        game.ask_for(KriegspielMove(QuestionAnnouncement.COMMON, chess.Move(chess.H7, chess.H8, promotion=chess.QUEEN)))
+        serialized = serialize_berkeley_game(game)
+        answer_data = serialized["game_state"]["white_scoresheet"]["moves_own"][0][0][1]
+
+        assert serialized["game_state"]["ruleset_id"] == RULESET_RAND
+        assert deserialize_kriegspiel_answer(answer_data) == KriegspielAnswer(
+            MainAnnouncement.REGULAR_MOVE,
+            promotion_announced=True,
+            next_turn_pawn_try_squares=tuple(),
         )
 
     def test_deserialize_rejects_missing_move_stack(self):

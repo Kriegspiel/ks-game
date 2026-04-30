@@ -252,12 +252,46 @@ def test_next_turn_has_pawn_capture_validation():
         KSAnswer(MA.REGULAR_MOVE, next_turn_has_pawn_capture="yes")
 
 
+def test_next_turn_pawn_try_squares_validation_and_normalization():
+    answer = KSAnswer(
+        MA.REGULAR_MOVE,
+        next_turn_pawn_try_squares=[chess.E4, chess.C2, chess.E4],
+    )
+
+    assert answer.next_turn_pawn_try_squares == (chess.C2, chess.E4)
+
+    with pytest.raises(TypeError, match="next_turn_pawn_try_squares must be an iterable"):
+        KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_try_squares=chess.E4)
+
+    with pytest.raises(TypeError, match="next_turn_pawn_try_squares must contain only integers"):
+        KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_try_squares=[chess.E4, "e5"])
+
+    with pytest.raises(ValueError, match="Invalid pawn try square: 64. Must be 0-63."):
+        KSAnswer(MA.REGULAR_MOVE, next_turn_pawn_try_squares=[64])
+
+
+def test_promotion_announced_validation():
+    answer = KSAnswer(MA.REGULAR_MOVE, promotion_announced=True)
+
+    assert answer.promotion_announced is True
+
+    with pytest.raises(TypeError, match="promotion_announced must be a boolean"):
+        KSAnswer(MA.REGULAR_MOVE, promotion_announced="yes")
+
+
 def test_next_turn_pawn_capture_metadata_is_mutually_exclusive():
-    with pytest.raises(ValueError, match="Use either next_turn_pawn_tries or next_turn_has_pawn_capture"):
+    with pytest.raises(ValueError, match="Use only one next-turn pawn-capture announcement field"):
         KSAnswer(
             MA.REGULAR_MOVE,
             next_turn_pawn_tries=1,
             next_turn_has_pawn_capture=True,
+        )
+
+    with pytest.raises(ValueError, match="Use only one next-turn pawn-capture announcement field"):
+        KSAnswer(
+            MA.REGULAR_MOVE,
+            next_turn_has_pawn_capture=False,
+            next_turn_pawn_try_squares=tuple(),
         )
 
 
@@ -400,6 +434,21 @@ def test_ksanswer_str_with_cincinnati_pawn_capture_payload():
         "<KriegspielAnswer: MainAnnouncement.REGULAR_MOVE, "
         "capture_at=None, captured_piece=None, special_case=SpecialCaseAnnouncement.NONE, "
         "next_turn_pawn_tries=None, next_turn_has_pawn_capture=True>"
+    )
+
+
+def test_ksanswer_str_with_rand_payload():
+    answer = KSAnswer(
+        MA.REGULAR_MOVE,
+        next_turn_pawn_try_squares=(chess.E4,),
+        promotion_announced=True,
+    )
+
+    assert str(answer) == (
+        "<KriegspielAnswer: MainAnnouncement.REGULAR_MOVE, "
+        "capture_at=None, captured_piece=None, special_case=SpecialCaseAnnouncement.NONE, "
+        "next_turn_pawn_tries=None, next_turn_pawn_try_squares=('e4',), "
+        "promotion_announced=True>"
     )
 
 
