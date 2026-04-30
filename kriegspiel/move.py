@@ -239,10 +239,14 @@ SINGLE_CHECK = [
 
 @enum.unique
 class CapturedPieceAnnouncement(enum.Enum):
-    """Public capture detail for variants that announce pawn vs piece."""
+    """Public piece detail for capture and drop announcements."""
 
     PAWN = 1
     PIECE = 2
+    KNIGHT = 3
+    BISHOP = 4
+    ROOK = 5
+    QUEEN = 6
 
 
 class KriegspielAnswer(object):
@@ -266,8 +270,10 @@ class KriegspielAnswer(object):
                 capture_at_square (int): Required for CAPTURE_DONE. Square number (0-63)
                                        where the capture occurred.
                 captured_piece_announcement (CapturedPieceAnnouncement): Optional public
-                                    capture detail for variants that distinguish pawn
-                                    captures from other piece captures.
+                                    capture detail for variants that distinguish captured
+                                    material.
+                dropped_piece_announcement (CapturedPieceAnnouncement): Optional public
+                                    drop-piece detail for reserve-drop variants.
                 promotion_announced (bool): Optional RAND-style public statement that
                                     a pawn promoted, without exposing piece type or square.
                 special_announcement: Optional special game state from SpecialCaseAnnouncement
@@ -303,6 +309,7 @@ class KriegspielAnswer(object):
         self._next_turn_has_pawn_capture = None
         self._next_turn_pawn_try_squares = None
         self._promotion_announced = False
+        self._dropped_piece_announcement = None
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             # Validation, that when capture is done, then valid square should
@@ -320,6 +327,16 @@ class KriegspielAnswer(object):
                 self._captured_piece_announcement = captured_piece_announcement
         elif "captured_piece_announcement" in kwargs:
             raise TypeError("captured_piece_announcement is only valid for CAPTURE_DONE")
+
+        if "dropped_piece_announcement" in kwargs:
+            if main_announcement != MainAnnouncement.REGULAR_MOVE:
+                raise TypeError("dropped_piece_announcement is only valid for REGULAR_MOVE")
+            dropped_piece_announcement = kwargs["dropped_piece_announcement"]
+            if not isinstance(dropped_piece_announcement, CapturedPieceAnnouncement):
+                raise TypeError("dropped_piece_announcement must be a CapturedPieceAnnouncement")
+            if dropped_piece_announcement == CapturedPieceAnnouncement.PIECE:
+                raise ValueError("dropped_piece_announcement must be an exact piece type")
+            self._dropped_piece_announcement = dropped_piece_announcement
 
         if "special_announcement" in kwargs:
             sca = kwargs["special_announcement"]
@@ -490,6 +507,16 @@ class KriegspielAnswer(object):
         return self._promotion_announced
 
     @property
+    def dropped_piece_announcement(self):
+        """
+        Get the public piece type for reserve drops.
+
+        Returns:
+            CapturedPieceAnnouncement or None: Exact dropped piece type when available.
+        """
+        return self._dropped_piece_announcement
+
+    @property
     def check_1(self):
         """
         Get the first check type in a double check situation.
@@ -529,6 +556,8 @@ class KriegspielAnswer(object):
             f"special_case={self._special_announcement}",
             f"next_turn_pawn_tries={self._next_turn_pawn_tries}",
         ]
+        if self._dropped_piece_announcement is not None:
+            main_data.append(f"dropped_piece={self._dropped_piece_announcement}")
         if self._next_turn_has_pawn_capture is not None:
             main_data.append(f"next_turn_has_pawn_capture={self._next_turn_has_pawn_capture}")
         if self._next_turn_pawn_try_squares is not None:
@@ -553,6 +582,7 @@ class KriegspielAnswer(object):
             self._next_turn_has_pawn_capture,
             self._next_turn_pawn_try_squares,
             self._promotion_announced,
+            self._dropped_piece_announcement,
             self._check_1,
             self._check_2,
         )
@@ -567,6 +597,7 @@ class KriegspielAnswer(object):
             -1 if self._next_turn_has_pawn_capture is None else int(self._next_turn_has_pawn_capture),
             self._next_turn_pawn_try_squares or (),
             int(self._promotion_announced),
+            self._dropped_piece_announcement.value if self._dropped_piece_announcement is not None else -1,
             self._check_1.value if self._check_1 is not None else -1,
             self._check_2.value if self._check_2 is not None else -1,
         )

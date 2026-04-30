@@ -1,5 +1,13 @@
 # Release Notes
 
+## Kriegspiel v. 1.7.0
+
+- **CrazyKrieg Support**: added first-class `crazykrieg` ruleset handling plus a dedicated `kriegspiel.crazykrieg.CrazyKriegGame` convenience entrypoint.
+- **Crazyhouse Engine**: CrazyKrieg now uses `python-chess` Crazyhouse boards with public reserves, legal drops, hidden drop squares, and reserve-aware game-end checks.
+- **Referee Announcements**: captures announce the exact unit entering reserve, promoted pawns are announced as pawns when captured, drops announce only the dropped piece type, promotions remain silent, and illegal attempts are public.
+- **Serialization**: schema `8` preserves exact capture identity, drop announcements, Crazyhouse FEN, and Crazyhouse move stacks while still reading schemas `3` through `7`.
+- **Testing**: added focused CrazyKrieg engine, serialization, and rules-comparison coverage for reserves, drops, promoted-pawn capture identity, `Any?`, and public illegal attempts.
+
 ## Kriegspiel v. 1.6.0
 
 - **English Support**: added first-class `english` ruleset handling plus a dedicated `kriegspiel.english.EnglishGame` convenience entrypoint.

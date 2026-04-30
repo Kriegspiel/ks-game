@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import chess
+import chess.variant
 
 from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
@@ -16,6 +17,7 @@ from kriegspiel.move import QuestionAnnouncement as QA
 RULESET_BERKELEY = "berkeley"
 RULESET_BERKELEY_ANY = "berkeley_any"
 RULESET_CINCINNATI = "cincinnati"
+RULESET_CRAZYKRIEG = "crazykrieg"
 RULESET_ENGLISH = "english"
 RULESET_RAND = "rand"
 RULESET_WILD16 = "wild16"
@@ -43,6 +45,15 @@ class BerkeleyRulesetPolicy:
     announce_next_turn_pawn_try_squares: bool
     release_ask_any_after_failed_pawn_try: bool
     stalemate_loses: bool
+    board_type: type[chess.Board]
+    exact_capture_announcements: bool
+    announce_drops: bool
+
+    def new_board(self):
+        return self.board_type()
+
+    def board_from_fen(self, fen: str):
+        return self.board_type(fen)
 
     def add_special_questions(self, possibilities: set[KSMove]) -> None:
         if self.allow_ask_any:
@@ -107,12 +118,40 @@ class BerkeleyRulesetPolicy:
             return self.discard_illegal_attempts
         return False
 
-    def captured_piece_announcement_for(self, captured_piece) -> CPA | None:
+    @staticmethod
+    def _exact_piece_announcement_for(piece_type: int) -> CPA:
+        exact_announcements = {
+            chess.PAWN: CPA.PAWN,
+            chess.KNIGHT: CPA.KNIGHT,
+            chess.BISHOP: CPA.BISHOP,
+            chess.ROOK: CPA.ROOK,
+            chess.QUEEN: CPA.QUEEN,
+        }
+        return exact_announcements[piece_type]
+
+    def captured_piece_announcement_for(
+        self,
+        captured_piece,
+        *,
+        board=None,
+        captured_square=None,
+    ) -> CPA | None:
         if not self.typed_capture_announcements or captured_piece is None:
             return None
+        if self.exact_capture_announcements:
+            if board is not None and captured_square is not None:
+                promoted = getattr(board, "promoted", 0)
+                if promoted & chess.BB_SQUARES[captured_square]:
+                    return CPA.PAWN
+            return self._exact_piece_announcement_for(captured_piece.piece_type)
         if captured_piece.piece_type == chess.PAWN:
             return CPA.PAWN
         return CPA.PIECE
+
+    def dropped_piece_announcement_for(self, move: KSMove) -> CPA | None:
+        if not self.announce_drops or move.chess_move is None or move.chess_move.drop is None:
+            return None
+        return self._exact_piece_announcement_for(move.chess_move.drop)
 
     def next_turn_pawn_tries(self, game) -> int | None:
         if not self.announce_next_turn_pawn_tries or game.game_over:
@@ -136,7 +175,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
         allow_ask_any = True if any_rule is None else any_rule
         ruleset = RULESET_BERKELEY_ANY if allow_ask_any else RULESET_BERKELEY
     elif any_rule is not None:
-        expected_any_rule = ruleset in {RULESET_BERKELEY_ANY, RULESET_ENGLISH}
+        expected_any_rule = ruleset in {RULESET_BERKELEY_ANY, RULESET_CRAZYKRIEG, RULESET_ENGLISH}
         if expected_any_rule != any_rule:
             raise ValueError(
                 f"ruleset {ruleset!r} conflicts with any_rule={any_rule!r}"
@@ -156,6 +195,9 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_try_squares=False,
             release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
+            board_type=chess.Board,
+            exact_capture_announcements=False,
+            announce_drops=False,
         )
     if ruleset == RULESET_BERKELEY:
         return BerkeleyRulesetPolicy(
@@ -171,6 +213,9 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_try_squares=False,
             release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
+            board_type=chess.Board,
+            exact_capture_announcements=False,
+            announce_drops=False,
         )
     if ruleset == RULESET_CINCINNATI:
         return BerkeleyRulesetPolicy(
@@ -186,6 +231,27 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_try_squares=False,
             release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
+            board_type=chess.Board,
+            exact_capture_announcements=False,
+            announce_drops=False,
+        )
+    if ruleset == RULESET_CRAZYKRIEG:
+        return BerkeleyRulesetPolicy(
+            identifier=ruleset,
+            allow_ask_any=True,
+            invalid_common_attempt_result=MA.NONSENSE,
+            discard_illegal_attempts=True,
+            public_illegal_attempts=True,
+            typed_capture_announcements=True,
+            announce_promotion=False,
+            announce_next_turn_pawn_tries=False,
+            announce_next_turn_has_pawn_capture=False,
+            announce_next_turn_pawn_try_squares=False,
+            release_ask_any_after_failed_pawn_try=True,
+            stalemate_loses=False,
+            board_type=chess.variant.CrazyhouseBoard,
+            exact_capture_announcements=True,
+            announce_drops=True,
         )
     if ruleset == RULESET_ENGLISH:
         return BerkeleyRulesetPolicy(
@@ -201,6 +267,9 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_try_squares=False,
             release_ask_any_after_failed_pawn_try=True,
             stalemate_loses=False,
+            board_type=chess.Board,
+            exact_capture_announcements=False,
+            announce_drops=False,
         )
     if ruleset == RULESET_RAND:
         return BerkeleyRulesetPolicy(
@@ -216,6 +285,9 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_try_squares=True,
             release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=True,
+            board_type=chess.Board,
+            exact_capture_announcements=False,
+            announce_drops=False,
         )
     if ruleset == RULESET_WILD16:
         return BerkeleyRulesetPolicy(
@@ -231,5 +303,8 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             announce_next_turn_pawn_try_squares=False,
             release_ask_any_after_failed_pawn_try=False,
             stalemate_loses=False,
+            board_type=chess.Board,
+            exact_capture_announcements=False,
+            announce_drops=False,
         )
     raise ValueError(f"Unsupported ruleset: {ruleset!r}")

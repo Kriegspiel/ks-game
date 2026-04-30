@@ -3,6 +3,7 @@
 """Focused policy tests for shared ruleset behavior."""
 
 import chess
+import chess.variant
 import pytest
 
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
@@ -13,6 +14,7 @@ from kriegspiel.move import QuestionAnnouncement as QA
 from kriegspiel.rulesets import RULESET_BERKELEY
 from kriegspiel.rulesets import RULESET_BERKELEY_ANY
 from kriegspiel.rulesets import RULESET_CINCINNATI
+from kriegspiel.rulesets import RULESET_CRAZYKRIEG
 from kriegspiel.rulesets import RULESET_ENGLISH
 from kriegspiel.rulesets import RULESET_RAND
 from kriegspiel.rulesets import RULESET_WILD16
@@ -23,6 +25,7 @@ def test_resolve_ruleset_policy_accepts_matching_any_rule_flags():
     assert resolve_ruleset_policy(ruleset=RULESET_BERKELEY_ANY, any_rule=True).identifier == RULESET_BERKELEY_ANY
     assert resolve_ruleset_policy(ruleset=RULESET_BERKELEY, any_rule=False).identifier == RULESET_BERKELEY
     assert resolve_ruleset_policy(ruleset=RULESET_CINCINNATI, any_rule=False).identifier == RULESET_CINCINNATI
+    assert resolve_ruleset_policy(ruleset=RULESET_CRAZYKRIEG, any_rule=True).identifier == RULESET_CRAZYKRIEG
     assert resolve_ruleset_policy(ruleset=RULESET_ENGLISH, any_rule=True).identifier == RULESET_ENGLISH
     assert resolve_ruleset_policy(ruleset=RULESET_RAND, any_rule=False).identifier == RULESET_RAND
 
@@ -30,6 +33,11 @@ def test_resolve_ruleset_policy_accepts_matching_any_rule_flags():
 def test_resolve_ruleset_policy_rejects_conflicting_english_any_rule_flag():
     with pytest.raises(ValueError, match="conflicts"):
         resolve_ruleset_policy(ruleset=RULESET_ENGLISH, any_rule=False)
+
+
+def test_resolve_ruleset_policy_rejects_conflicting_crazykrieg_any_rule_flag():
+    with pytest.raises(ValueError, match="conflicts"):
+        resolve_ruleset_policy(ruleset=RULESET_CRAZYKRIEG, any_rule=False)
 
 
 def test_ruleset_policy_controls_opponent_visibility():
@@ -56,6 +64,23 @@ def test_ruleset_policy_announces_piece_captures_for_wild16():
     assert policy.captured_piece_announcement_for(None) is None
     assert policy.captured_piece_announcement_for(chess.Piece(chess.PAWN, chess.WHITE)) == CPA.PAWN
     assert policy.captured_piece_announcement_for(chess.Piece(chess.ROOK, chess.WHITE)) == CPA.PIECE
+
+
+def test_ruleset_policy_announces_exact_capture_and_drop_identity_for_crazykrieg():
+    policy = resolve_ruleset_policy(ruleset=RULESET_CRAZYKRIEG)
+    board = chess.variant.CrazyhouseBoard.empty()
+    board.set_piece_at(chess.E8, chess.Piece(chess.QUEEN, chess.WHITE), promoted=True)
+    drop = KSMove(QA.COMMON, chess.Move.from_uci("N@f3"))
+
+    assert isinstance(policy.new_board(), chess.variant.CrazyhouseBoard)
+    assert isinstance(policy.board_from_fen(chess.variant.CrazyhouseBoard().fen()), chess.variant.CrazyhouseBoard)
+    assert policy.captured_piece_announcement_for(chess.Piece(chess.KNIGHT, chess.BLACK)) == CPA.KNIGHT
+    assert policy.captured_piece_announcement_for(
+        chess.Piece(chess.QUEEN, chess.WHITE),
+        board=board,
+        captured_square=chess.E8,
+    ) == CPA.PAWN
+    assert policy.dropped_piece_announcement_for(drop) == CPA.KNIGHT
 
 
 def test_ruleset_policy_announces_binary_pawn_capture_for_cincinnati():

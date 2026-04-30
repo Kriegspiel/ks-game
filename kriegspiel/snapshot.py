@@ -44,6 +44,25 @@ class PublicMaterialSummary:
 
 
 @dataclass(frozen=True)
+class ReserveSideSummary:
+    """Public reserve/pocket material for one color."""
+
+    pawns: int = 0
+    knights: int = 0
+    bishops: int = 0
+    rooks: int = 0
+    queens: int = 0
+
+
+@dataclass(frozen=True)
+class PublicReserveSummary:
+    """Public reserve/pocket material for both colors."""
+
+    white: ReserveSideSummary
+    black: ReserveSideSummary
+
+
+@dataclass(frozen=True)
 class KriegspielGameSnapshot:
     """Serializable, public view of a hidden-board Kriegspiel game."""
 

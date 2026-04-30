@@ -10,14 +10,17 @@ import pytest
 
 from kriegspiel import BerkeleyGame
 from kriegspiel import CincinnatiGame
+from kriegspiel import CrazyKriegGame
 from kriegspiel import EnglishGame
 from kriegspiel import KriegspielGame
 from kriegspiel import KriegspielMove as KSMove
 from kriegspiel import MainAnnouncement as MA
 from kriegspiel import MaterialSideSummary
 from kriegspiel import PublicMaterialSummary
+from kriegspiel import PublicReserveSummary
 from kriegspiel import QuestionAnnouncement as QA
 from kriegspiel import RandGame
+from kriegspiel import ReserveSideSummary
 from kriegspiel import Wild16Game
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
@@ -162,6 +165,15 @@ def test_public_material_summary_hides_pawn_capture_counts_for_untyped_rulesets(
             ),
             id="rand",
         ),
+        pytest.param(
+            CrazyKriegGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.D5,
+                captured_piece_announcement=CPA.PAWN,
+            ),
+            id="crazykrieg",
+        ),
     ],
 )
 def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(game, expected_answer):
@@ -212,6 +224,15 @@ def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(
                 next_turn_pawn_try_squares=tuple(),
             ),
             id="rand",
+        ),
+        pytest.param(
+            CrazyKriegGame(),
+            KSAnswer(
+                MA.CAPTURE_DONE,
+                capture_at_square=chess.A5,
+                captured_piece_announcement=CPA.KNIGHT,
+            ),
+            id="crazykrieg",
         ),
     ],
 )
@@ -275,12 +296,22 @@ def test_public_material_summary_handles_rand_announced_promotion_without_pawn_c
     )
 
 
+def test_public_reserve_summary_is_zero_for_non_drop_rulesets():
+    assert BerkeleyGame().public_reserve_summary == PublicReserveSummary(
+        white=ReserveSideSummary(),
+        black=ReserveSideSummary(),
+    )
+
+
 def test_package_root_exports_variant_entrypoints():
     assert KriegspielGame.__name__ == "KriegspielGame"
     assert BerkeleyGame.__name__ == "BerkeleyGame"
     assert CincinnatiGame.__name__ == "CincinnatiGame"
+    assert CrazyKriegGame.__name__ == "CrazyKriegGame"
     assert EnglishGame.__name__ == "EnglishGame"
     assert RandGame.__name__ == "RandGame"
     assert Wild16Game.__name__ == "Wild16Game"
     assert MaterialSideSummary.__name__ == "MaterialSideSummary"
     assert PublicMaterialSummary.__name__ == "PublicMaterialSummary"
+    assert PublicReserveSummary.__name__ == "PublicReserveSummary"
+    assert ReserveSideSummary.__name__ == "ReserveSideSummary"
