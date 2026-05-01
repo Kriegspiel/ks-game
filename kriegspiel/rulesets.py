@@ -48,6 +48,7 @@ class BerkeleyRulesetPolicy:
     board_type: type[chess.Board]
     exact_capture_announcements: bool
     announce_drops: bool
+    material_summary_from_board: bool = False
 
     def new_board(self):
         return self.board_type()
@@ -252,6 +253,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.variant.CrazyhouseBoard,
             exact_capture_announcements=True,
             announce_drops=True,
+            material_summary_from_board=True,
         )
     if ruleset == RULESET_ENGLISH:
         return BerkeleyRulesetPolicy(

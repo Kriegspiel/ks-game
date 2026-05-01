@@ -17,7 +17,7 @@ from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import QuestionAnnouncement as QA
 from kriegspiel.move import SpecialCaseAnnouncement as SCA
 from kriegspiel.rulesets import RULESET_CRAZYKRIEG, resolve_ruleset_policy
-from kriegspiel.snapshot import PublicReserveSummary, ReserveSideSummary
+from kriegspiel.snapshot import MaterialSideSummary, PublicMaterialSummary, PublicReserveSummary, ReserveSideSummary
 
 
 def _reset_board(game):
@@ -130,6 +130,37 @@ def test_crazykrieg_exact_non_pawn_capture_identity_is_public():
         captured_piece_announcement=CPA.KNIGHT,
     )
     assert game.public_reserve_summary.white == ReserveSideSummary(knights=1)
+
+
+def test_crazykrieg_material_summary_counts_board_pieces_without_pawn_counts():
+    game = CrazyKriegGame()
+
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=16, pawns_captured=None),
+        black=MaterialSideSummary(pieces_remaining=16, pawns_captured=None),
+    )
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e2e4"))) == KSAnswer(MA.REGULAR_MOVE)
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("d7d5"))) == KSAnswer(MA.REGULAR_MOVE)
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e4d5"))) == KSAnswer(
+        MA.CAPTURE_DONE,
+        capture_at_square=chess.D5,
+        captured_piece_announcement=CPA.PAWN,
+    )
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=16, pawns_captured=None),
+        black=MaterialSideSummary(pieces_remaining=15, pawns_captured=None),
+    )
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("g8f6"))) == KSAnswer(MA.REGULAR_MOVE)
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("P@e3"))) == KSAnswer(
+        MA.REGULAR_MOVE,
+        dropped_piece_announcement=CPA.PAWN,
+    )
+    assert game.public_material_summary == PublicMaterialSummary(
+        white=MaterialSideSummary(pieces_remaining=17, pawns_captured=None),
+        black=MaterialSideSummary(pieces_remaining=15, pawns_captured=None),
+    )
 
 
 def test_crazykrieg_any_yes_requires_one_pawn_try_then_releases_after_failed_try():

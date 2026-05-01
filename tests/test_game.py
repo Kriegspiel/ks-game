@@ -165,15 +165,6 @@ def test_public_material_summary_hides_pawn_capture_counts_for_untyped_rulesets(
             ),
             id="rand",
         ),
-        pytest.param(
-            CrazyKriegGame(),
-            KSAnswer(
-                MA.CAPTURE_DONE,
-                capture_at_square=chess.D5,
-                captured_piece_announcement=CPA.PAWN,
-            ),
-            id="crazykrieg",
-        ),
     ],
 )
 def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(game, expected_answer):
@@ -224,15 +215,6 @@ def test_public_material_summary_counts_public_pawn_captures_for_typed_rulesets(
                 next_turn_pawn_try_squares=tuple(),
             ),
             id="rand",
-        ),
-        pytest.param(
-            CrazyKriegGame(),
-            KSAnswer(
-                MA.CAPTURE_DONE,
-                capture_at_square=chess.A5,
-                captured_piece_announcement=CPA.KNIGHT,
-            ),
-            id="crazykrieg",
         ),
     ],
 )

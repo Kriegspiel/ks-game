@@ -559,6 +559,9 @@ class KriegspielGame(object):
                     pawn_captures += 1
         return captures, pawn_captures
 
+    def _board_piece_count(self, color):
+        return sum(1 for piece in self._board.piece_map().values() if piece.color == color)
+
     @property
     def public_material_summary(self):
         """
@@ -570,6 +573,18 @@ class KriegspielGame(object):
         completed capture answers instead of true-board pawn counts so promotion
         remains tied to what the referee publicly announced.
         """
+        if self._ruleset.material_summary_from_board:
+            return PublicMaterialSummary(
+                white=MaterialSideSummary(
+                    pieces_remaining=self._board_piece_count(chess.WHITE),
+                    pawns_captured=None,
+                ),
+                black=MaterialSideSummary(
+                    pieces_remaining=self._board_piece_count(chess.BLACK),
+                    pawns_captured=None,
+                ),
+            )
+
         white_captures, white_pawn_captures = self._capture_counts_from_completed_moves(
             self._whites_scoresheet.moves_own
         )

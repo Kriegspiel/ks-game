@@ -1,5 +1,13 @@
 # Release Notes
 
+## Kriegspiel v. 1.7.1
+
+- **CrazyKrieg Material**: public material summaries now count actual board
+  pieces from the Crazyhouse engine state and omit pawn-capture counts, leaving
+  reserve contents as the public source for captured material.
+- **English Any? Coverage**: strengthened tests to prove a failed required pawn
+  try releases the player to make any legal move.
+
 ## Kriegspiel v. 1.7.0
 
 - **CrazyKrieg Support**: added first-class `crazykrieg` ruleset handling plus a dedicated `kriegspiel.crazykrieg.CrazyKriegGame` convenience entrypoint.
