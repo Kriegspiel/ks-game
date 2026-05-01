@@ -4,7 +4,7 @@ __author__ = "Alexander Filatov"
 
 __email__ = "alexander@kriegspiel.org"
 
-__version__ = "1.7.0"
+__version__ = "1.7.1"
 
 from kriegspiel.berkeley import BerkeleyGame
 from kriegspiel.cincinnati import CincinnatiGame

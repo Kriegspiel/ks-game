@@ -81,6 +81,7 @@ def test_english_failed_pawn_try_releases_any_obligation():
     assert game.must_use_pawns is False
     assert rook_move in game.possible_to_ask
     assert empty_pawn_try not in game.possible_to_ask
+    assert game.ask_for(rook_move) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.A5)
 
 
 def test_english_legal_pawn_capture_after_any_completes_move():
