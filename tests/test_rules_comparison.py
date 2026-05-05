@@ -129,6 +129,29 @@ def test_rules_comparison_promotion_capture_counts_as_one_pawn_capture(
 
 @pytest.mark.rules
 @pytest.mark.parametrize(
+    ("game", "expected_promotion_announced"),
+    [
+        pytest.param(BerkeleyGame(), False, id="berkeley-any"),
+        pytest.param(BerkeleyGame(any_rule=False), False, id="berkeley"),
+        pytest.param(CincinnatiGame(), False, id="cincinnati"),
+        pytest.param(CrazyKriegGame(), False, id="crazykrieg"),
+        pytest.param(EnglishGame(), False, id="english"),
+        pytest.param(RandGame(), True, id="rand"),
+        pytest.param(Wild16Game(), False, id="wild16"),
+    ],
+)
+def test_rules_comparison_only_rand_announces_promotion(game, expected_promotion_announced):
+    game = _build_promotion_capture_game(game)
+    promotion_capture = KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=chess.QUEEN))
+
+    answer = game.ask_for(promotion_capture)
+
+    assert answer.main_announcement == MA.CAPTURE_DONE
+    assert answer.promotion_announced is expected_promotion_announced
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
     ("game", "expected"),
     [
         pytest.param(
