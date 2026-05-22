@@ -61,12 +61,105 @@ def _promotion_capture_moves():
     }
 
 
-def _build_double_check_game(game):
+DOUBLE_CHECK_CASES = [
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.F2,
+            "blocker_from": chess.E2,
+            "blocker_piece": chess.KNIGHT,
+            "move": chess.Move(chess.E2, chess.D4),
+            "expected_checks": {SCA.CHECK_RANK, SCA.CHECK_KNIGHT},
+        },
+        id="rank-knight",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.C5,
+            "blocker_from": chess.C4,
+            "blocker_piece": chess.KNIGHT,
+            "move": chess.Move(chess.C4, chess.A3),
+            "expected_checks": {SCA.CHECK_FILE, SCA.CHECK_KNIGHT},
+        },
+        id="file-knight",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.F2,
+            "blocker_from": chess.E2,
+            "blocker_piece": chess.BISHOP,
+            "move": chess.Move(chess.E2, chess.D3),
+            "expected_checks": {SCA.CHECK_RANK, SCA.CHECK_LONG_DIAGONAL},
+        },
+        id="rank-long-diagonal",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.F2,
+            "blocker_from": chess.E2,
+            "blocker_piece": chess.BISHOP,
+            "move": chess.Move(chess.E2, chess.D1),
+            "expected_checks": {SCA.CHECK_RANK, SCA.CHECK_SHORT_DIAGONAL},
+        },
+        id="rank-short-diagonal",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.C5,
+            "blocker_from": chess.C4,
+            "blocker_piece": chess.BISHOP,
+            "move": chess.Move(chess.C4, chess.D3),
+            "expected_checks": {SCA.CHECK_FILE, SCA.CHECK_LONG_DIAGONAL},
+        },
+        id="file-long-diagonal",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.C5,
+            "blocker_from": chess.C4,
+            "blocker_piece": chess.BISHOP,
+            "move": chess.Move(chess.C4, chess.B3),
+            "expected_checks": {SCA.CHECK_FILE, SCA.CHECK_SHORT_DIAGONAL},
+        },
+        id="file-short-diagonal",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.E4,
+            "blocker_from": chess.D3,
+            "blocker_piece": chess.KNIGHT,
+            "move": chess.Move(chess.D3, chess.B4),
+            "expected_checks": {SCA.CHECK_LONG_DIAGONAL, SCA.CHECK_KNIGHT},
+        },
+        id="long-diagonal-knight",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "line_attacker": chess.A4,
+            "blocker_from": chess.B3,
+            "blocker_piece": chess.KNIGHT,
+            "move": chess.Move(chess.B3, chess.D4),
+            "expected_checks": {SCA.CHECK_SHORT_DIAGONAL, SCA.CHECK_KNIGHT},
+        },
+        id="short-diagonal-knight",
+    ),
+]
+
+
+def _build_double_check_game(game, case):
     game._board.clear()
-    game._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    game._board.turn = chess.BLACK
+    game._board.set_piece_at(case["king"], chess.Piece(chess.KING, chess.WHITE))
     game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
-    game._board.set_piece_at(chess.E2, chess.Piece(chess.QUEEN, chess.BLACK))
-    game._board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
+    game._board.set_piece_at(case["line_attacker"], chess.Piece(chess.QUEEN, chess.BLACK))
+    game._board.set_piece_at(case["blocker_from"], chess.Piece(case["blocker_piece"], chess.BLACK))
     game._generate_possible_to_ask_list()
     return game
 
@@ -174,16 +267,17 @@ def test_rules_comparison_only_rand_announces_promotion(game, expected_promotion
         pytest.param(Wild16Game(), id="wild16"),
     ],
 )
-def test_rules_comparison_double_check_preserves_both_component_announcements(game):
-    game = _build_double_check_game(game)
+@pytest.mark.parametrize("case", DOUBLE_CHECK_CASES)
+def test_rules_comparison_double_check_preserves_component_announcements(game, case):
+    game = _build_double_check_game(game, case)
+    move = KSMove(QA.COMMON, case["move"])
 
-    game.ask_for(KSMove(QA.COMMON, chess.Move(chess.C2, chess.B2)))
-    answer = game.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C4)))
+    assert move in game.possible_to_ask
+    answer = game.ask_for(move)
 
     assert answer.main_announcement == MA.REGULAR_MOVE
     assert answer.special_announcement == SCA.CHECK_DOUBLE
-    assert answer.check_1 == SCA.CHECK_RANK
-    assert answer.check_2 == SCA.CHECK_KNIGHT
+    assert {answer.check_1, answer.check_2} == case["expected_checks"]
 
 
 @pytest.mark.rules
