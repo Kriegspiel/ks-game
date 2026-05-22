@@ -13,6 +13,7 @@ from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import MainAnnouncement as MA
 from kriegspiel.move import QuestionAnnouncement as QA
+from kriegspiel.move import SpecialCaseAnnouncement as SCA
 from kriegspiel.rand import RandGame
 from kriegspiel.wild16 import Wild16Game
 
@@ -58,6 +59,16 @@ def _promotion_capture_moves():
         KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=promotion))
         for promotion in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
     }
+
+
+def _build_double_check_game(game):
+    game._board.clear()
+    game._board.set_piece_at(chess.C2, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.E2, chess.Piece(chess.QUEEN, chess.BLACK))
+    game._board.set_piece_at(chess.D2, chess.Piece(chess.KNIGHT, chess.BLACK))
+    game._generate_possible_to_ask_list()
+    return game
 
 
 @pytest.mark.rules
@@ -148,6 +159,31 @@ def test_rules_comparison_only_rand_announces_promotion(game, expected_promotion
 
     assert answer.main_announcement == MA.CAPTURE_DONE
     assert answer.promotion_announced is expected_promotion_announced
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(), id="berkeley-any"),
+        pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+        pytest.param(CincinnatiGame(), id="cincinnati"),
+        pytest.param(CrazyKriegGame(), id="crazykrieg"),
+        pytest.param(EnglishGame(), id="english"),
+        pytest.param(RandGame(), id="rand"),
+        pytest.param(Wild16Game(), id="wild16"),
+    ],
+)
+def test_rules_comparison_double_check_preserves_both_component_announcements(game):
+    game = _build_double_check_game(game)
+
+    game.ask_for(KSMove(QA.COMMON, chess.Move(chess.C2, chess.B2)))
+    answer = game.ask_for(KSMove(QA.COMMON, chess.Move(chess.D2, chess.C4)))
+
+    assert answer.main_announcement == MA.REGULAR_MOVE
+    assert answer.special_announcement == SCA.CHECK_DOUBLE
+    assert answer.check_1 == SCA.CHECK_RANK
+    assert answer.check_2 == SCA.CHECK_KNIGHT
 
 
 @pytest.mark.rules
