@@ -61,6 +61,42 @@ def _promotion_capture_moves():
     }
 
 
+EN_PASSANT_DIAGONAL_CHECK_CASES = [
+    pytest.param(
+        {
+            "king": chess.C2,
+            "pawn_from": chess.E4,
+            "captured_pawn": chess.D4,
+            "ep_square": chess.D3,
+            "expected_check": SCA.CHECK_LONG_DIAGONAL,
+        },
+        id="long-diagonal",
+    ),
+    pytest.param(
+        {
+            "king": chess.C2,
+            "pawn_from": chess.C4,
+            "captured_pawn": chess.B4,
+            "ep_square": chess.B3,
+            "expected_check": SCA.CHECK_SHORT_DIAGONAL,
+        },
+        id="short-diagonal",
+    ),
+]
+
+
+def _build_en_passant_diagonal_check_game(game, case):
+    game._board.clear()
+    game._board.turn = chess.BLACK
+    game._board.set_piece_at(case["king"], chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(case["pawn_from"], chess.Piece(chess.PAWN, chess.BLACK))
+    game._board.set_piece_at(case["captured_pawn"], chess.Piece(chess.PAWN, chess.WHITE))
+    game._board.ep_square = case["ep_square"]
+    game._generate_possible_to_ask_list()
+    return game
+
+
 DOUBLE_CHECK_CASES = [
     pytest.param(
         {
@@ -252,6 +288,42 @@ def test_rules_comparison_only_rand_announces_promotion(game, expected_promotion
 
     assert answer.main_announcement == MA.CAPTURE_DONE
     assert answer.promotion_announced is expected_promotion_announced
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(), id="berkeley-any"),
+        pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+        pytest.param(CincinnatiGame(), id="cincinnati"),
+        pytest.param(CrazyKriegGame(), id="crazykrieg"),
+        pytest.param(EnglishGame(), id="english"),
+        pytest.param(RandGame(), id="rand"),
+        pytest.param(Wild16Game(), id="wild16"),
+    ],
+)
+@pytest.mark.parametrize("case", EN_PASSANT_DIAGONAL_CHECK_CASES)
+def test_rules_comparison_en_passant_capture_can_announce_diagonal_check(game, case):
+    game = _build_en_passant_diagonal_check_game(game, case)
+    move = chess.Move(case["pawn_from"], case["ep_square"])
+    ks_move = KSMove(QA.COMMON, move)
+
+    assert game._board.is_en_passant(move)
+    assert ks_move in game.possible_to_ask
+    answer = game.ask_for(ks_move)
+
+    expected_piece = (
+        CPA.PAWN
+        if game.ruleset_id in {"cincinnati", "crazykrieg", "rand", "wild16"}
+        else None
+    )
+    assert answer.main_announcement == MA.CAPTURE_DONE
+    assert answer.capture_at_square == case["captured_pawn"]
+    assert answer.captured_piece_announcement == expected_piece
+    assert answer.special_announcement == case["expected_check"]
+    assert game._board.piece_at(case["captured_pawn"]) is None
+    assert game._board.piece_at(case["ep_square"]) == chess.Piece(chess.PAWN, chess.BLACK)
 
 
 @pytest.mark.rules
