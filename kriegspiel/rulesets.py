@@ -48,6 +48,7 @@ class BerkeleyRulesetPolicy:
     board_type: type[chess.Board]
     exact_capture_announcements: bool
     announce_drops: bool
+    announce_en_passant: bool
     material_summary_from_board: bool = False
 
     def new_board(self):
@@ -149,6 +150,18 @@ class BerkeleyRulesetPolicy:
             return CPA.PAWN
         return CPA.PIECE
 
+    def capture_square_for(self, board, move) -> int:
+        if self.announce_en_passant and board.is_en_passant(move):
+            return move.to_square
+        if not board.is_en_passant(move):
+            return move.to_square
+        if board.turn == chess.WHITE:
+            return move.to_square - 8
+        return move.to_square + 8
+
+    def en_passant_announced_for(self, board, move) -> bool:
+        return self.announce_en_passant and board.is_en_passant(move)
+
     def dropped_piece_announcement_for(self, move: KSMove) -> CPA | None:
         if not self.announce_drops or move.chess_move is None or move.chess_move.drop is None:
             return None
@@ -199,6 +212,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.Board,
             exact_capture_announcements=False,
             announce_drops=False,
+            announce_en_passant=False,
         )
     if ruleset == RULESET_BERKELEY:
         return BerkeleyRulesetPolicy(
@@ -217,6 +231,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.Board,
             exact_capture_announcements=False,
             announce_drops=False,
+            announce_en_passant=False,
         )
     if ruleset == RULESET_CINCINNATI:
         return BerkeleyRulesetPolicy(
@@ -235,6 +250,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.Board,
             exact_capture_announcements=False,
             announce_drops=False,
+            announce_en_passant=False,
         )
     if ruleset == RULESET_CRAZYKRIEG:
         return BerkeleyRulesetPolicy(
@@ -253,6 +269,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.variant.CrazyhouseBoard,
             exact_capture_announcements=True,
             announce_drops=True,
+            announce_en_passant=False,
             material_summary_from_board=True,
         )
     if ruleset == RULESET_ENGLISH:
@@ -272,6 +289,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.Board,
             exact_capture_announcements=False,
             announce_drops=False,
+            announce_en_passant=True,
         )
     if ruleset == RULESET_RAND:
         return BerkeleyRulesetPolicy(
@@ -290,6 +308,7 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.Board,
             exact_capture_announcements=False,
             announce_drops=False,
+            announce_en_passant=False,
         )
     if ruleset == RULESET_WILD16:
         return BerkeleyRulesetPolicy(
@@ -308,5 +327,6 @@ def resolve_ruleset_policy(*, ruleset: str | None = None, any_rule: bool | None 
             board_type=chess.Board,
             exact_capture_announcements=False,
             announce_drops=False,
+            announce_en_passant=False,
         )
     raise ValueError(f"Unsupported ruleset: {ruleset!r}")

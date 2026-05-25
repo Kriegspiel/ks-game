@@ -8,8 +8,8 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 
 JSON Schema Structure:
 {
-  "schema_version": 8,
-  "library_version": "1.7.0",
+  "schema_version": 9,
+  "library_version": "1.7.2",
   "game_type": "BerkeleyGame",
   "game_state": {
     "ruleset_id": "berkeley_any",
@@ -47,6 +47,7 @@ moves_own/moves_opponent: [
         "capture_at_square": int | null,
         "captured_piece_announcement": "PAWN" | "PIECE" | null,
         "dropped_piece_announcement": "PAWN" | "KNIGHT" | "BISHOP" | "ROOK" | "QUEEN" | null,
+        "en_passant_announced": bool | null,
         "promotion_announced": bool | null,
         "special_announcement": "NONE" | "CHECK_RANK" | ...,
         "next_turn_pawn_tries": int | null,
@@ -82,7 +83,8 @@ INTERMEDIATE_SERIALIZATION_SCHEMA_VERSION = 4
 PREVIOUS_SERIALIZATION_SCHEMA_VERSION = 5
 CINCINNATI_SERIALIZATION_SCHEMA_VERSION = 6
 RAND_SERIALIZATION_SCHEMA_VERSION = 7
-SERIALIZATION_SCHEMA_VERSION = 8
+CRAZYKRIEG_SERIALIZATION_SCHEMA_VERSION = 8
+SERIALIZATION_SCHEMA_VERSION = 9
 
 
 class SerializationError(Exception):
@@ -229,6 +231,8 @@ def serialize_kriegspiel_answer(answer: KriegspielAnswer) -> Dict[str, Any]:
     }
     if answer.promotion_announced:
         result["promotion_announced"] = True
+    if answer.en_passant_announced:
+        result["en_passant_announced"] = True
     if answer.dropped_piece_announcement is not None:
         result["dropped_piece_announcement"] = serialize_enum(answer.dropped_piece_announcement)
     if answer.next_turn_has_pawn_capture is not None:
@@ -264,6 +268,8 @@ def deserialize_kriegspiel_answer(data: Dict[str, Any]) -> KriegspielAnswer:
             kwargs["next_turn_pawn_try_squares"] = data["next_turn_pawn_try_squares"]
         if data.get("promotion_announced") is not None:
             kwargs["promotion_announced"] = data["promotion_announced"]
+        if data.get("en_passant_announced") is not None:
+            kwargs["en_passant_announced"] = data["en_passant_announced"]
         
         special_announcement = deserialize_special_case_announcement(data["special_announcement"])
         
@@ -365,6 +371,7 @@ def deserialize_berkeley_game(data: Dict[str, Any]):
             PREVIOUS_SERIALIZATION_SCHEMA_VERSION,
             CINCINNATI_SERIALIZATION_SCHEMA_VERSION,
             RAND_SERIALIZATION_SCHEMA_VERSION,
+            CRAZYKRIEG_SERIALIZATION_SCHEMA_VERSION,
             SERIALIZATION_SCHEMA_VERSION,
         }:
             raise UnsupportedVersionError(f"Unsupported schema_version: {schema_version}")

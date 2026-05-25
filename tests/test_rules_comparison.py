@@ -318,9 +318,11 @@ def test_rules_comparison_en_passant_capture_can_announce_diagonal_check(game, c
         if game.ruleset_id in {"cincinnati", "crazykrieg", "rand", "wild16"}
         else None
     )
+    expected_capture_square = case["ep_square"] if game.ruleset_id == "english" else case["captured_pawn"]
     assert answer.main_announcement == MA.CAPTURE_DONE
-    assert answer.capture_at_square == case["captured_pawn"]
+    assert answer.capture_at_square == expected_capture_square
     assert answer.captured_piece_announcement == expected_piece
+    assert answer.en_passant_announced is (game.ruleset_id == "english")
     assert answer.special_announcement == case["expected_check"]
     assert game._board.piece_at(case["captured_pawn"]) is None
     assert game._board.piece_at(case["ep_square"]) == chess.Piece(chess.PAWN, chess.BLACK)

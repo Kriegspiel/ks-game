@@ -1,5 +1,14 @@
 # Release Notes
 
+## Kriegspiel v. 1.7.2
+
+- **English En Passant**: English games now announce en passant captures
+  explicitly and use the capturing pawn's landing square for that announcement.
+- **Serialization**: schema `9` preserves en passant announcement metadata
+  while still reading schemas `3` through `8`.
+- **Testing**: added focused English and cross-ruleset coverage for en passant
+  announcement behavior.
+
 ## Kriegspiel v. 1.7.1
 
 - **CrazyKrieg Material**: public material summaries now count actual board

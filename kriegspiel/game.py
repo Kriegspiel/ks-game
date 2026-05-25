@@ -122,6 +122,7 @@ class KriegspielGame(object):
                     captured_piece_announcement,
                     dropped_piece_announcement,
                     promotion_announced,
+                    en_passant_announced,
                 ) = self._make_move(
                     move.chess_move
                 )
@@ -132,6 +133,8 @@ class KriegspielGame(object):
                 answer_kwargs = {"special_announcement": special_case}
                 if promotion_announced:
                     answer_kwargs["promotion_announced"] = True
+                if en_passant_announced:
+                    answer_kwargs["en_passant_announced"] = True
                 if dropped_piece_announcement is not None:
                     answer_kwargs["dropped_piece_announcement"] = dropped_piece_announcement
                 if next_turn_pawn_tries is not None:
@@ -305,23 +308,27 @@ class KriegspielGame(object):
                 raise RuntimeError
         return SCA.NONE
 
-    def _get_captured_square(self, move):
+    def _get_captured_piece_square(self, move):
         """
-        A square with capture will be announced.
+        Return the true board square of the captured piece.
         """
         if not self._board.is_en_passant(move):
             return move.to_square
-        else:
-            if self._board.turn == chess.WHITE:
-                return move.to_square - 8
-            else:
-                return move.to_square + 8
+        if self._board.turn == chess.WHITE:
+            return move.to_square - 8
+        return move.to_square + 8
+
+    def _get_captured_square(self, move):
+        """
+        Return the public square announced for the capture.
+        """
+        return self._ruleset.capture_square_for(self._board, move)
 
     def _get_captured_piece(self, move):
         """Return the piece removed by a capture before the move is pushed."""
         if not self._board.is_capture(move):
             return None
-        captured_square = self._get_captured_square(move)
+        captured_square = self._get_captured_piece_square(move)
         return self._board.piece_at(captured_square)
 
     def _is_insufficient_material(self):
@@ -339,18 +346,26 @@ class KriegspielGame(object):
         self._must_use_pawns = False
         captured_square = None
         captured_piece_announcement = None
+        en_passant_announced = False
         dropped_piece_announcement = self._ruleset.dropped_piece_announcement_for(KSMove(QA.COMMON, move))
         promotion_announced = bool(move.promotion and self._ruleset.announce_promotion)
         if self._board.is_capture(move):
             captured_square = self._get_captured_square(move)
             captured_piece = self._get_captured_piece(move)
+            en_passant_announced = self._ruleset.en_passant_announced_for(self._board, move)
             captured_piece_announcement = self._ruleset.captured_piece_announcement_for(
                 captured_piece,
                 board=self._board,
                 captured_square=captured_square,
             )
         self._board.push(move)
-        return captured_square, captured_piece_announcement, dropped_piece_announcement, promotion_announced
+        return (
+            captured_square,
+            captured_piece_announcement,
+            dropped_piece_announcement,
+            promotion_announced,
+            en_passant_announced,
+        )
 
     def _legal_pawn_capture_moves(self):
         """Return legal pawn captures for the active player in the true position."""
