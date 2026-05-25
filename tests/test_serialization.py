@@ -310,6 +310,33 @@ class TestKriegspielAnswerSerializer:
             next_turn_pawn_tries=3,
         )
 
+    def test_serialize_english_en_passant_answer_field(self):
+        answer = KriegspielAnswer(
+            MainAnnouncement.CAPTURE_DONE,
+            capture_at_square=45,
+            en_passant_announced=True,
+        )
+
+        result = serialize_kriegspiel_answer(answer)
+
+        assert result["en_passant_announced"] is True
+
+    def test_deserialize_english_en_passant_answer_field(self):
+        data = {
+            "main_announcement": "CAPTURE_DONE",
+            "capture_at_square": 45,
+            "en_passant_announced": True,
+            "special_announcement": "NONE",
+            "check_1": None,
+            "check_2": None,
+        }
+
+        assert deserialize_kriegspiel_answer(data) == KriegspielAnswer(
+            MainAnnouncement.CAPTURE_DONE,
+            capture_at_square=45,
+            en_passant_announced=True,
+        )
+
     def test_serialize_cincinnati_answer_fields(self):
         answer = KriegspielAnswer(
             MainAnnouncement.REGULAR_MOVE,

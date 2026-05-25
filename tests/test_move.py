@@ -241,6 +241,20 @@ def test_non_capture_answer_rejects_public_capture_kind():
         KSAnswer(MA.REGULAR_MOVE, captured_piece_announcement=CPA.PAWN)
 
 
+def test_capture_answer_can_announce_en_passant():
+    answer = KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F6, en_passant_announced=True)
+
+    assert answer.en_passant_announced is True
+
+
+def test_en_passant_announcement_validation():
+    with pytest.raises(TypeError, match="en_passant_announced must be a boolean"):
+        KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.F6, en_passant_announced="yes")
+
+    with pytest.raises(TypeError, match="en_passant_announced is only valid for CAPTURE_DONE"):
+        KSAnswer(MA.REGULAR_MOVE, en_passant_announced=True)
+
+
 def test_regular_move_answer_can_include_public_drop_identity():
     answer = KSAnswer(MA.REGULAR_MOVE, dropped_piece_announcement=CPA.KNIGHT)
 

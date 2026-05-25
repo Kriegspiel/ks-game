@@ -101,6 +101,25 @@ def test_english_capture_announces_square_but_not_captured_kind():
 
     assert result == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.A5)
     assert result.captured_piece_announcement is None
+    assert result.en_passant_announced is False
+
+
+def test_english_en_passant_is_announced_on_landing_square():
+    game = EnglishGame()
+    game._board.clear()
+    game._board.turn = chess.BLACK
+    game._board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.E4, chess.Piece(chess.PAWN, chess.BLACK))
+    game._board.set_piece_at(chess.D4, chess.Piece(chess.PAWN, chess.WHITE))
+    game._board.ep_square = chess.D3
+    game._generate_possible_to_ask_list()
+
+    result = game.ask_for(KSMove(QA.COMMON, chess.Move(chess.E4, chess.D3)))
+
+    assert result == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.D3, en_passant_announced=True)
+    assert game._board.piece_at(chess.D4) is None
+    assert game._board.piece_at(chess.D3) == chess.Piece(chess.PAWN, chess.BLACK)
 
 
 def test_english_public_illegal_attempt_is_visible_to_opponent():

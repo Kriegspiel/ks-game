@@ -274,6 +274,8 @@ class KriegspielAnswer(object):
                                     material.
                 dropped_piece_announcement (CapturedPieceAnnouncement): Optional public
                                     drop-piece detail for reserve-drop variants.
+                en_passant_announced (bool): Optional English-style public statement
+                                    that a capture was en passant.
                 promotion_announced (bool): Optional RAND-style public statement that
                                     a pawn promoted, without exposing piece type or square.
                 special_announcement: Optional special game state from SpecialCaseAnnouncement
@@ -310,6 +312,7 @@ class KriegspielAnswer(object):
         self._next_turn_pawn_try_squares = None
         self._promotion_announced = False
         self._dropped_piece_announcement = None
+        self._en_passant_announced = False
 
         if main_announcement == MainAnnouncement.CAPTURE_DONE:
             # Validation, that when capture is done, then valid square should
@@ -327,6 +330,14 @@ class KriegspielAnswer(object):
                 self._captured_piece_announcement = captured_piece_announcement
         elif "captured_piece_announcement" in kwargs:
             raise TypeError("captured_piece_announcement is only valid for CAPTURE_DONE")
+
+        if "en_passant_announced" in kwargs:
+            en_passant_announced = kwargs["en_passant_announced"]
+            if not isinstance(en_passant_announced, bool):
+                raise TypeError("en_passant_announced must be a boolean")
+            if en_passant_announced and main_announcement != MainAnnouncement.CAPTURE_DONE:
+                raise TypeError("en_passant_announced is only valid for CAPTURE_DONE")
+            self._en_passant_announced = en_passant_announced
 
         if "dropped_piece_announcement" in kwargs:
             if main_announcement != MainAnnouncement.REGULAR_MOVE:
@@ -507,6 +518,16 @@ class KriegspielAnswer(object):
         return self._promotion_announced
 
     @property
+    def en_passant_announced(self):
+        """
+        Get whether the answer publicly announces an en passant capture.
+
+        Returns:
+            bool: True when the ruleset announces the capture as en passant.
+        """
+        return self._en_passant_announced
+
+    @property
     def dropped_piece_announcement(self):
         """
         Get the public piece type for reserve drops.
@@ -565,6 +586,8 @@ class KriegspielAnswer(object):
             main_data.append(f"next_turn_pawn_try_squares={square_names}")
         if self._promotion_announced:
             main_data.append("promotion_announced=True")
+        if self._en_passant_announced:
+            main_data.append("en_passant_announced=True")
 
         if self._check_1 is not None or self._check_2 is not None:
             extra_data = f"check_1={self._check_1}, check_2={self._check_2}"
@@ -582,6 +605,7 @@ class KriegspielAnswer(object):
             self._next_turn_has_pawn_capture,
             self._next_turn_pawn_try_squares,
             self._promotion_announced,
+            self._en_passant_announced,
             self._dropped_piece_announcement,
             self._check_1,
             self._check_2,
@@ -597,6 +621,7 @@ class KriegspielAnswer(object):
             -1 if self._next_turn_has_pawn_capture is None else int(self._next_turn_has_pawn_capture),
             self._next_turn_pawn_try_squares or (),
             int(self._promotion_announced),
+            int(self._en_passant_announced),
             self._dropped_piece_announcement.value if self._dropped_piece_announcement is not None else -1,
             self._check_1.value if self._check_1 is not None else -1,
             self._check_2.value if self._check_2 is not None else -1,
