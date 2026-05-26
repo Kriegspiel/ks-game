@@ -96,6 +96,7 @@ class BerkeleyRulesetPolicy:
         if self.release_ask_any_after_failed_pawn_try and game.must_use_pawns and answer.main_announcement == MA.ILLEGAL_MOVE:
             game._must_use_pawns = False
             game._generate_possible_to_ask_list()
+            game._discard_possible_to_ask(KSMove(QA.ASK_ANY))
             return
         if not self.allow_ask_any:
             return

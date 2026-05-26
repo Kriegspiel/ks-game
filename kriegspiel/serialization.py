@@ -9,7 +9,7 @@ Kriegspiel game components using JSON format with custom encoders/decoders.
 JSON Schema Structure:
 {
   "schema_version": 9,
-  "library_version": "1.7.2",
+  "library_version": "1.7.3",
   "game_type": "BerkeleyGame",
   "game_state": {
     "ruleset_id": "berkeley_any",

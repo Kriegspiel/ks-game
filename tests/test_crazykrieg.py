@@ -175,6 +175,8 @@ def test_crazykrieg_any_yes_requires_one_pawn_try_then_releases_after_failed_try
     assert game.ask_for(empty_pawn_try) == KSAnswer(MA.ILLEGAL_MOVE)
     assert game.must_use_pawns is False
     assert rook_move in game.possible_to_ask
+    assert KSMove(QA.ASK_ANY) not in game.possible_to_ask
+    assert game.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_crazykrieg_drop_can_give_check_without_revealing_square():
