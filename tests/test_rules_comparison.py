@@ -31,6 +31,21 @@ def _build_rules_comparison_game(game):
     return game
 
 
+def _build_ask_any_release_game(game):
+    game._board.clear()
+    if hasattr(game._board, "pockets"):
+        game._board.pockets[chess.WHITE].reset()
+        game._board.pockets[chess.BLACK].reset()
+    game._board.set_piece_at(chess.E1, chess.Piece(chess.KING, chess.WHITE))
+    game._board.set_piece_at(chess.A1, chess.Piece(chess.ROOK, chess.WHITE))
+    game._board.set_piece_at(chess.E4, chess.Piece(chess.PAWN, chess.WHITE))
+    game._board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
+    game._board.set_piece_at(chess.A5, chess.Piece(chess.KNIGHT, chess.BLACK))
+    game._board.set_piece_at(chess.D5, chess.Piece(chess.BISHOP, chess.BLACK))
+    game._generate_possible_to_ask_list()
+    return game
+
+
 def _piece_capture_move():
     return KSMove(QA.COMMON, chess.Move(chess.A1, chess.A5))
 
@@ -40,6 +55,10 @@ def _left_pawn_capture_move():
 
 
 def _right_pawn_capture_move():
+    return KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
+
+
+def _empty_right_pawn_try_move():
     return KSMove(QA.COMMON, chess.Move(chess.E4, chess.F5))
 
 
@@ -428,6 +447,86 @@ def test_rules_comparison_berkeley_any_has_any_forces_a_pawn_capture():
     assert game.must_use_pawns is True
     assert game.ask_for(_piece_capture_move()) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
     assert game.ask_for(_left_pawn_capture_move()) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.D5)
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(), id="berkeley-any"),
+        pytest.param(CrazyKriegGame(), id="crazykrieg"),
+        pytest.param(EnglishGame(), id="english"),
+    ],
+)
+def test_rules_comparison_ask_any_can_be_asked_only_once_per_ply_after_no(game):
+    ask_any = KSMove(QA.ASK_ANY)
+
+    assert game.ask_for(ask_any) == KSAnswer(MA.NO_ANY)
+    assert ask_any not in game.possible_to_ask
+    assert game.ask_for(ask_any) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(), id="berkeley-any"),
+        pytest.param(CrazyKriegGame(), id="crazykrieg"),
+        pytest.param(EnglishGame(), id="english"),
+    ],
+)
+def test_rules_comparison_ask_any_can_be_asked_only_once_per_ply_after_yes(game):
+    game = _build_rules_comparison_game(game)
+    ask_any = KSMove(QA.ASK_ANY)
+
+    assert game.ask_for(ask_any) == KSAnswer(MA.HAS_ANY)
+    assert ask_any not in game.possible_to_ask
+    assert game.ask_for(ask_any) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    ("game", "expected_impossible_common_attempt"),
+    [
+        pytest.param(CrazyKriegGame(), MA.NONSENSE, id="crazykrieg"),
+        pytest.param(EnglishGame(), MA.ILLEGAL_MOVE, id="english"),
+    ],
+)
+def test_rules_comparison_english_style_release_keeps_ask_any_single_use_per_ply(
+    game,
+    expected_impossible_common_attempt,
+):
+    game = _build_ask_any_release_game(game)
+    ask_any = KSMove(QA.ASK_ANY)
+    impossible_regular_attempt = KSMove(QA.COMMON, chess.Move(chess.G1, chess.G3))
+
+    assert game.ask_for(ask_any) == KSAnswer(MA.HAS_ANY)
+    assert game.ask_for(_empty_right_pawn_try_move()) == KSAnswer(MA.ILLEGAL_MOVE)
+    assert game.must_use_pawns is False
+    assert ask_any not in game.possible_to_ask
+
+    assert game.ask_for(impossible_regular_attempt) == KSAnswer(expected_impossible_common_attempt)
+    assert ask_any not in game.possible_to_ask
+    assert game.ask_for(ask_any) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(
+    "game",
+    [
+        pytest.param(BerkeleyGame(any_rule=False), id="berkeley"),
+        pytest.param(CincinnatiGame(), id="cincinnati"),
+        pytest.param(RandGame(), id="rand"),
+        pytest.param(Wild16Game(), id="wild16"),
+    ],
+)
+def test_rules_comparison_rulesets_without_ask_any_reject_it_for_the_whole_ply(game):
+    ask_any = KSMove(QA.ASK_ANY)
+
+    assert ask_any not in game.possible_to_ask
+    assert game.ask_for(ask_any) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
+    assert ask_any not in game.possible_to_ask
+    assert game.ask_for(ask_any) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 @pytest.mark.rules
