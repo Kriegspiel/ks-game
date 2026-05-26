@@ -1,5 +1,15 @@
 # Release Notes
 
+## Kriegspiel v. 1.7.3
+
+- **English Any?**: after a positive `Any?` answer, one failed required pawn
+  try still releases the player to make any legal move, but no longer allows
+  asking `Any?` again in the same ply.
+- **CrazyKrieg Any?**: applied the same one-question-per-ply behavior after a
+  failed required pawn try.
+- **Testing**: added focused English and CrazyKrieg regression coverage for
+  repeated `Any?` attempts after the release.
+
 ## Kriegspiel v. 1.7.2
 
 - **English En Passant**: English games now announce en passant captures

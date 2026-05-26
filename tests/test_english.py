@@ -80,8 +80,27 @@ def test_english_failed_pawn_try_releases_any_obligation():
     assert game.ask_for(empty_pawn_try) == KSAnswer(MA.ILLEGAL_MOVE)
     assert game.must_use_pawns is False
     assert rook_move in game.possible_to_ask
+    assert KSMove(QA.ASK_ANY) not in game.possible_to_ask
     assert empty_pawn_try not in game.possible_to_ask
+    assert game.ask_for(KSMove(QA.ASK_ANY)) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
     assert game.ask_for(rook_move) == KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.A5)
+
+
+def test_english_failed_pawn_try_keeps_any_unavailable_after_later_illegal_attempt():
+    game = EnglishGame()
+    ask_any = KSMove(QA.ASK_ANY)
+    failed_pawn_try = KSMove(QA.COMMON, chess.Move.from_uci("e4f5"))
+    illegal_knight_try = KSMove(QA.COMMON, chess.Move.from_uci("g1g3"))
+
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("e2e4"))) == KSAnswer(MA.REGULAR_MOVE)
+    assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci("d7d5"))) == KSAnswer(MA.REGULAR_MOVE)
+    assert game.ask_for(ask_any) == KSAnswer(MA.HAS_ANY)
+    assert game.ask_for(failed_pawn_try) == KSAnswer(MA.ILLEGAL_MOVE)
+    assert game.ask_for(illegal_knight_try) == KSAnswer(MA.ILLEGAL_MOVE)
+
+    assert game.must_use_pawns is False
+    assert ask_any not in game.possible_to_ask
+    assert game.ask_for(ask_any) == KSAnswer(MA.IMPOSSIBLE_TO_ASK)
 
 
 def test_english_legal_pawn_capture_after_any_completes_move():
