@@ -465,6 +465,16 @@ def test_ksanswer_str_with_capture_payload_and_no_double_check():
     )
 
 
+def test_ksanswer_str_with_en_passant_payload():
+    answer = KSAnswer(MA.CAPTURE_DONE, capture_at_square=chess.D3, en_passant_announced=True)
+
+    assert str(answer) == (
+        "<KriegspielAnswer: MainAnnouncement.CAPTURE_DONE, "
+        "capture_at=d3, captured_piece=None, special_case=SpecialCaseAnnouncement.NONE, "
+        "next_turn_pawn_tries=None, en_passant_announced=True>"
+    )
+
+
 def test_ksanswer_str_with_cincinnati_pawn_capture_payload():
     answer = KSAnswer(
         MA.REGULAR_MOVE,
