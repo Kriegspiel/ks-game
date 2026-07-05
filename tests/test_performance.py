@@ -85,22 +85,22 @@ class TestPerformance:
                 g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F6, chess.G8)))
             elapsed_time = _perf_now() - start_time
 
-        assert elapsed_time < 0.5, f"200-move game took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.15, f"200-move game took {elapsed_time:.3f}s, expected < 0.15s"
 
     def test_move_generation_performance_initial_position(self):
         """Repeated regeneration from the initial position should stay comfortably sublinear."""
         elapsed_time = _measure_regeneration(BerkeleyGame(), 2000)
-        assert elapsed_time < 0.5, f"2000 initial-position regenerations took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.45, f"2000 initial-position regenerations took {elapsed_time:.3f}s, expected < 0.45s"
 
     def test_move_generation_performance_midgame_position(self):
         """A richer middlegame should still regenerate askable moves within a reasonable budget."""
         elapsed_time = _measure_regeneration(_build_midgame_position(), 2000)
-        assert elapsed_time < 0.5, f"2000 midgame regenerations took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.45, f"2000 midgame regenerations took {elapsed_time:.3f}s, expected < 0.45s"
 
     def test_move_generation_performance_hidden_blocker_position(self):
         """Hidden-blocker positions should stay cheap to regenerate and cover the hidden-information path."""
         elapsed_time = _measure_regeneration(_build_hidden_blocker_position(), 4000)
-        assert elapsed_time < 0.5, f"4000 hidden-blocker regenerations took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.3, f"4000 hidden-blocker regenerations took {elapsed_time:.3f}s, expected < 0.3s"
 
     def test_complex_position_performance(self):
         """Test performance with a complex mid-game position."""
@@ -125,7 +125,7 @@ class TestPerformance:
             elapsed_time = _perf_now() - start_time
         
         # Complex opening should complete quickly
-        assert elapsed_time < 0.25, f"Complex opening took {elapsed_time:.3f}s, expected < 0.25s"
+        assert elapsed_time < 0.05, f"Complex opening took {elapsed_time:.3f}s, expected < 0.05s"
 
     def test_large_number_of_any_questions(self):
         """Test performance when asking many ANY questions in different games."""
@@ -138,7 +138,7 @@ class TestPerformance:
             elapsed_time = _perf_now() - start_time
         
         # Should handle 100 ANY questions quickly
-        assert elapsed_time < 0.5, f"100 ANY questions took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.075, f"100 ANY questions took {elapsed_time:.3f}s, expected < 0.075s"
 
     def test_endgame_performance(self):
         """Test performance in endgame positions with few pieces."""
@@ -161,7 +161,7 @@ class TestPerformance:
             elapsed_time = _perf_now() - start_time
         
         # Endgame simulation should be fast
-        assert elapsed_time < 0.5, f"Endgame simulation took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.05, f"Endgame simulation took {elapsed_time:.3f}s, expected < 0.05s"
 
     def test_move_generation_after_long_game_remains_responsive(self):
         """Scoresheet growth should not cause move regeneration to blow up late in a long game."""
@@ -174,7 +174,7 @@ class TestPerformance:
             g.ask_for(KSMove(QA.COMMON, chess.Move(chess.F6, chess.G8)))
 
         elapsed_time = _measure_regeneration(g, 1000)
-        assert elapsed_time < 0.5, f"1000 late-game regenerations took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.25, f"1000 late-game regenerations took {elapsed_time:.3f}s, expected < 0.25s"
 
     @pytest.mark.slow
     def test_stress_test_game_creation(self):
@@ -187,7 +187,7 @@ class TestPerformance:
             elapsed_time = _perf_now() - start_time
         
         # Should create 1000 games quickly
-        assert elapsed_time < 0.5, f"Creating 1000 games took {elapsed_time:.3f}s, expected < 0.5s"
+        assert elapsed_time < 0.35, f"Creating 1000 games took {elapsed_time:.3f}s, expected < 0.35s"
         assert len(games) == 1000
 
     @pytest.mark.slow
@@ -214,7 +214,7 @@ class TestPerformance:
             elapsed_time = _perf_now() - start_time
         
         # Move generation should still be fast after long game
-        assert elapsed_time < 0.1, f"Move generation after long game took {elapsed_time:.3f}s"
+        assert elapsed_time < 0.01, f"Move generation after long game took {elapsed_time:.3f}s"
 
 
 if __name__ == "__main__":
