@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Versioned Python runtime environments and rollback metadata.
+.venv*
+.python-runtime-rollback.json

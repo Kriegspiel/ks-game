@@ -87,3 +87,5 @@ print(wild16.current_turn_pawn_tries)
 - PyPI: [kriegspiel](https://pypi.org/project/kriegspiel/)
 - Live site: [kriegspiel.org](https://kriegspiel.org/)
 - Issues: [github.com/Kriegspiel/ks-game/issues](https://github.com/Kriegspiel/ks-game/issues)
+
+Python runtime: CPython 3.15.2, pinned in `.python-version`. Keep the OS Python unchanged; production runtime migration uses `ks-deploy python-runtime` (see the platform migration runbook).
