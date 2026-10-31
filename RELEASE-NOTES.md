@@ -1,5 +1,9 @@
 # Release Notes
 
+## 1.8.0 — Python 3.15
+
+- Move the supported runtime to CPython 3.15.2 and validate the complete test suite on that interpreter.
+
 ## Kriegspiel v. 1.7.3
 
 - **English Any?**: after a positive `Any?` answer, one failed required pawn

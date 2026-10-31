@@ -8,9 +8,9 @@ jobs:
     name: Test code coverage
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.15.2'
     - name: Install package and test extras
       run: pip install -e .[test]
     - name: Run tests and collect coverage
