@@ -1,5 +1,14 @@
 # Release Notes
 
+## 1.8.1 — Python 3.11–3.15 support
+
+- Restore compatibility with Python 3.11, 3.12, 3.13, and 3.14 while retaining
+  Python 3.15 support. The package now requires Python 3.11 or newer.
+- Build and validate distributions and run the complete test suite against the
+  installed wheel on all five supported Python versions.
+- Keep the CPython 3.15.2 development/deployment pin and existing game rules,
+  public APIs, and serialization behavior.
+
 ## 1.8.0 — Python 3.15
 
 - Move the supported runtime to CPython 3.15.2 and validate the complete test suite on that interpreter.

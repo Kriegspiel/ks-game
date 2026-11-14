@@ -19,6 +19,9 @@ The package models the referee, not a UI. You interact with it by asking questio
 
 ## Install
 
+Supports Python 3.11, 3.12, 3.13, 3.14, and 3.15. The complete test suite and
+package builds are checked on every supported Python version.
+
 ```bash
 pip install kriegspiel
 ```
@@ -88,4 +91,6 @@ print(wild16.current_turn_pawn_tries)
 - Live site: [kriegspiel.org](https://kriegspiel.org/)
 - Issues: [github.com/Kriegspiel/ks-game/issues](https://github.com/Kriegspiel/ks-game/issues)
 
-Python runtime: CPython 3.15.2, pinned in `.python-version`. Keep the OS Python unchanged; production runtime migration uses `ks-deploy python-runtime` (see the platform migration runbook).
+The repository's `.python-version` pins CPython 3.15.2 for development and
+production deployment. The published library supports all Python versions
+listed above; that repository pin does not restrict package installation.
