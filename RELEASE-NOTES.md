@@ -1,5 +1,10 @@
 # Release Notes
 
+## 1.8.2 — Double-check announcements
+
+All seven rulesets announce double checks in a fixed order based on direction.
+Loading a saved referee answer applies the same order.
+
 ## 1.8.1 — Python 3.11–3.15 support
 
 - Restore compatibility with Python 3.11, 3.12, 3.13, and 3.14 while retaining
