@@ -124,7 +124,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.E2,
             "blocker_piece": chess.KNIGHT,
             "move": chess.Move(chess.E2, chess.D4),
-            "expected_checks": {SCA.CHECK_RANK, SCA.CHECK_KNIGHT},
+            "expected_checks": (SCA.CHECK_RANK, SCA.CHECK_KNIGHT),
         },
         id="rank-knight",
     ),
@@ -135,7 +135,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.C4,
             "blocker_piece": chess.KNIGHT,
             "move": chess.Move(chess.C4, chess.A3),
-            "expected_checks": {SCA.CHECK_FILE, SCA.CHECK_KNIGHT},
+            "expected_checks": (SCA.CHECK_FILE, SCA.CHECK_KNIGHT),
         },
         id="file-knight",
     ),
@@ -146,7 +146,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.E2,
             "blocker_piece": chess.BISHOP,
             "move": chess.Move(chess.E2, chess.D3),
-            "expected_checks": {SCA.CHECK_RANK, SCA.CHECK_LONG_DIAGONAL},
+            "expected_checks": (SCA.CHECK_RANK, SCA.CHECK_LONG_DIAGONAL),
         },
         id="rank-long-diagonal",
     ),
@@ -157,7 +157,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.E2,
             "blocker_piece": chess.BISHOP,
             "move": chess.Move(chess.E2, chess.D1),
-            "expected_checks": {SCA.CHECK_RANK, SCA.CHECK_SHORT_DIAGONAL},
+            "expected_checks": (SCA.CHECK_RANK, SCA.CHECK_SHORT_DIAGONAL),
         },
         id="rank-short-diagonal",
     ),
@@ -168,7 +168,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.C4,
             "blocker_piece": chess.BISHOP,
             "move": chess.Move(chess.C4, chess.D3),
-            "expected_checks": {SCA.CHECK_FILE, SCA.CHECK_LONG_DIAGONAL},
+            "expected_checks": (SCA.CHECK_FILE, SCA.CHECK_LONG_DIAGONAL),
         },
         id="file-long-diagonal",
     ),
@@ -179,7 +179,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.C4,
             "blocker_piece": chess.BISHOP,
             "move": chess.Move(chess.C4, chess.B3),
-            "expected_checks": {SCA.CHECK_FILE, SCA.CHECK_SHORT_DIAGONAL},
+            "expected_checks": (SCA.CHECK_FILE, SCA.CHECK_SHORT_DIAGONAL),
         },
         id="file-short-diagonal",
     ),
@@ -190,7 +190,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.D3,
             "blocker_piece": chess.KNIGHT,
             "move": chess.Move(chess.D3, chess.B4),
-            "expected_checks": {SCA.CHECK_LONG_DIAGONAL, SCA.CHECK_KNIGHT},
+            "expected_checks": (SCA.CHECK_LONG_DIAGONAL, SCA.CHECK_KNIGHT),
         },
         id="long-diagonal-knight",
     ),
@@ -201,7 +201,7 @@ DOUBLE_CHECK_CASES = [
             "blocker_from": chess.B3,
             "blocker_piece": chess.KNIGHT,
             "move": chess.Move(chess.B3, chess.D4),
-            "expected_checks": {SCA.CHECK_SHORT_DIAGONAL, SCA.CHECK_KNIGHT},
+            "expected_checks": (SCA.CHECK_SHORT_DIAGONAL, SCA.CHECK_KNIGHT),
         },
         id="short-diagonal-knight",
     ),
@@ -370,7 +370,7 @@ def test_rules_comparison_double_check_preserves_component_announcements(game, c
 
     assert answer.main_announcement == MA.REGULAR_MOVE
     assert answer.special_announcement == SCA.CHECK_DOUBLE
-    assert {answer.check_1, answer.check_2} == case["expected_checks"]
+    assert (answer.check_1, answer.check_2) == case["expected_checks"]
 
 
 @pytest.mark.rules

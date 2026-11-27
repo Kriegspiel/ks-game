@@ -16,6 +16,7 @@ import pytest
 from kriegspiel.berkeley import chess
 from kriegspiel.berkeley import BerkeleyGame
 
+from kriegspiel.move import SINGLE_CHECK
 from kriegspiel.move import KriegspielMove as KSMove
 from kriegspiel.move import QuestionAnnouncement as QA
 
@@ -580,3 +581,10 @@ def test_ksss_opponent_not_enough_details_in_response():
     a = KSSS(chess.BLACK)
     with pytest.raises(ValueError):
         a.record_move_opponent(QA.COMMON, MA.REGULAR_MOVE)
+
+
+@pytest.mark.parametrize("first", SINGLE_CHECK)
+@pytest.mark.parametrize("second", SINGLE_CHECK)
+def test_double_check_keeps_both_directions_in_public_order(first, second):
+    answer = KSAnswer(MA.REGULAR_MOVE, special_announcement=(SCA.CHECK_DOUBLE, [first, second]))
+    assert (answer.check_1, answer.check_2) == tuple(sorted((first, second), key=lambda check: check.value))

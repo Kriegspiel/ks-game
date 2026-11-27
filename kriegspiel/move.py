@@ -227,7 +227,7 @@ class SpecialCaseAnnouncement(enum.Enum):
     CHECK_DOUBLE = 11
 
 
-# Five options for Singe Check
+# Public display order for the five check directions in every ruleset.
 SINGLE_CHECK = [
     SpecialCaseAnnouncement.CHECK_RANK,
     SpecialCaseAnnouncement.CHECK_FILE,
@@ -364,8 +364,7 @@ class KriegspielAnswer(object):
                         # are single check.
                         if not check in SINGLE_CHECK:
                             raise TypeError("Each check in double check must be a valid single check type")
-                    self._check_1 = sca[1][0]
-                    self._check_2 = sca[1][1]
+                    self._check_1, self._check_2 = sorted(sca[1], key=SINGLE_CHECK.index)
                 else:
                     # Validation, that if it's tuple, then only double check
                     # is the option.
