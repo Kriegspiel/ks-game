@@ -1,5 +1,12 @@
 # Release Notes
 
+## 1.8.3 — Pawn move suggestions
+
+Pawn diagonals now follow each ruleset's public pawn hints, including when a
+game resumes. A hidden pawn's two-square advance could previously highlight an
+extra diagonal in Cincinnati, Wild 16, and RAND. Legal en passant captures
+remain available in all seven rulesets.
+
 ## 1.8.2 — Double-check announcements
 
 All seven rulesets announce double checks in a fixed order based on direction.
