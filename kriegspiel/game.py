@@ -423,6 +423,8 @@ class KriegspielGame(object):
         """
         # Make a copy of the FULL board (referee's board)
         players_board = self._board.copy(stack=False)
+        # Only the ruleset's pawn hint may add diagonal tries to this board's moves.
+        players_board.ep_square = None
         active_color = self._board.turn
         # Remove all pieces belonging not to the current player
         for square, piece in self._board.piece_map().items():
@@ -462,6 +464,15 @@ class KriegspielGame(object):
     def _set_possible_to_ask(self, possibilities):
         self._possible_to_ask_set = set(possibilities)
         self._possible_to_ask = list(self._possible_to_ask_set)
+
+    def restore_possible_to_ask(self, possibilities):
+        """Restore saved tries, including earlier rejections on this turn."""
+        saved = set(possibilities)
+        # Older engines could add these directly from the referee's en passant square.
+        ep_tries = {KSMove(QA.COMMON, move) for move in self._board.generate_pseudo_legal_ep()}
+        if saved & ep_tries:
+            saved -= ep_tries - self._ruleset.pawn_capture_attempts_for_prompt(self)
+        self._set_possible_to_ask(saved)
 
     def _discard_possible_to_ask(self, move):
         if move not in self._possible_to_ask_set:
@@ -739,7 +750,7 @@ class KriegspielGame(object):
             if game._must_use_pawns:
                 game._set_possible_to_ask(game._generate_possible_pawn_captures())
         else:
-            game._set_possible_to_ask(snapshot.possible_to_ask)
+            game.restore_possible_to_ask(snapshot.possible_to_ask)
         return game
 
     @classmethod

@@ -2,12 +2,15 @@
 
 """Tests that mirror the public rules-comparison table."""
 
+from dataclasses import replace
+
 import pytest
 
 from kriegspiel.berkeley import BerkeleyGame, chess
 from kriegspiel.cincinnati import CincinnatiGame
 from kriegspiel.crazykrieg import CrazyKriegGame
 from kriegspiel.english import EnglishGame
+from kriegspiel.game import KriegspielGame
 from kriegspiel.move import CapturedPieceAnnouncement as CPA
 from kriegspiel.move import KriegspielAnswer as KSAnswer
 from kriegspiel.move import KriegspielMove as KSMove
@@ -78,6 +81,66 @@ def _promotion_capture_moves():
         KSMove(QA.COMMON, chess.Move(chess.D2, chess.C1, promotion=promotion))
         for promotion in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
     }
+
+
+def _pinned_pawn_game(ruleset, last_move, opening=()):
+    game = KriegspielGame(ruleset=ruleset)
+    # The black queen on e6 pins the white pawn on e5 to its king.
+    for uci in [*opening, "e2e4", "d7d6", "e4e5", "d8d7", "g1f3", "d7e6", "a2a3", last_move]:
+        assert game.ask_for(KSMove(QA.COMMON, chess.Move.from_uci(uci))).move_done
+    return game
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize(("ruleset", "clue", "suggest_diagonal"), [
+    ("berkeley", (None, None, None), True),
+    ("berkeley_any", (None, None, None), True),
+    ("english", (None, None, None), True),
+    ("crazykrieg", (None, None, None), True),
+    ("cincinnati", (False, None, None), False),
+    ("wild16", (None, 0, None), False),
+    ("rand", (None, None, ()), False),
+])
+def test_hidden_pawn_advance_gives_identical_move_suggestions(ruleset, clue, suggest_diagonal):
+    single = _pinned_pawn_game(ruleset, "f7f6")
+    double = _pinned_pawn_game(ruleset, "f7f5")
+    diagonal = KSMove(QA.COMMON, chess.Move.from_uci("e5f6"))
+
+    for game in (single, double):
+        assert (
+            game.current_turn_has_pawn_capture,
+            game.current_turn_pawn_tries,
+            game.current_turn_pawn_try_squares,
+        ) == clue
+        assert game.is_possible_to_ask(diagonal) is suggest_diagonal
+    assert set(single.possible_to_ask) == set(double.possible_to_ask)
+
+    # An older save can contain the extra diagonal after the player has tried
+    # other moves. Loading it must preserve the moves already ruled out.
+    snapshot = double.snapshot()
+    forward = KSMove(QA.COMMON, chess.Move.from_uci("e5e6"))
+    assert forward in snapshot.possible_to_ask
+    saved = (set(snapshot.possible_to_ask) | {diagonal}) - {forward}
+    restored = KriegspielGame.from_snapshot(replace(snapshot, possible_to_ask=tuple(saved)))
+    assert set(restored.possible_to_ask) == set(single.possible_to_ask) - {forward}
+    assert restored.is_possible_to_ask(diagonal) is suggest_diagonal
+
+
+@pytest.mark.rules
+@pytest.mark.parametrize("ruleset", ["cincinnati", "wild16", "rand"])
+def test_en_passant_with_two_adjacent_pawns_follows_public_source_hint(ruleset):
+    game = _pinned_pawn_game(ruleset, "f7f5", opening=("g2g4", "a7a6", "g4g5", "a6a5"))
+    pinned, legal, empty = [
+        KSMove(QA.COMMON, chess.Move.from_uci(uci)) for uci in ("e5f6", "g5f6", "g5h6")
+    ]
+    snapshot = game.snapshot()
+    restored = KriegspielGame.from_snapshot(
+        replace(snapshot, possible_to_ask=(*snapshot.possible_to_ask, pinned))
+    )
+    for current in (game, restored):
+        assert current.is_possible_to_ask(pinned) is (ruleset != "rand")
+        assert current.is_possible_to_ask(empty)
+        assert current.ask_for(legal).main_announcement == MA.CAPTURE_DONE
 
 
 EN_PASSANT_DIAGONAL_CHECK_CASES = [
